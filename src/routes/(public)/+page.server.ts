@@ -1,16 +1,18 @@
 import { getPosts } from '$lib/api/post';
-import type { PageServerLoad } from './$types';
 import { handleLoadError } from '$lib/utils/error-handlers';
 
-export const load: PageServerLoad = async ({ url, fetch }) => {
+export async function load({ url, fetch }) {
 	const page = url.searchParams.get('page') ? Number(url.searchParams.get('page')) : undefined;
 	const limit = url.searchParams.get('limit') ? Number(url.searchParams.get('limit')) : undefined;
 
 	try {
+		const result = await getPosts({ page, limit }, fetch);
+
 		return {
-			postsResult: await getPosts({ page, limit }, fetch)
+			posts: result.posts,
+			pagination: result.pagination
 		};
 	} catch (err) {
-		handleLoadError(err);
+		return handleLoadError(err);
 	}
-};
+}
