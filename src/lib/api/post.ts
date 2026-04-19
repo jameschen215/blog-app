@@ -25,7 +25,7 @@ export async function getPosts(
 	return apiGet<PostsResult>(endpoint, customFetch);
 }
 
-export async function getPostById(id: number, customFetch = fetch): Promise<PostDetailResult> {
+export async function getPost(id: number, customFetch = fetch): Promise<PostDetailResult> {
 	return apiGet<PostDetailResult>(`/api/posts/${id}`, customFetch);
 }
 
@@ -77,4 +77,12 @@ export function updatePost(
 
 export function deleteComment(postId: number, commentId: number, customFetch = fetch) {
 	return apiDelete(`/api/posts/${postId}/comments/${commentId}`, customFetch);
+}
+
+export function createComment(postId: number, content: string, customFetch = fetch) {
+	return apiPost(`/api/posts/${postId}/comments`, { content }, customFetch);
+}
+
+export async function likePost(id: number, customFetch = fetch) {
+	return apiPost(`/api/posts/${id}/like`, undefined, customFetch);
 }

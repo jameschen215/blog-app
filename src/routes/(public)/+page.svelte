@@ -6,7 +6,7 @@
 	import { Heart, Clock, ChevronLeft, ChevronRight, MessageSquare } from '@lucide/svelte';
 
 	import Avatar from '$lib/components/Avatar.svelte';
-	import { formatCompactNum } from '$lib/utils/formatters';
+	import { formatCompactNum, getReadingTime } from '$lib/utils/formatters';
 
 	let { data }: PageProps = $props();
 
@@ -45,16 +45,6 @@
 		const url = new URL(page.url);
 		url.searchParams.set('page', String(nextPage));
 		goto(url.toString());
-	}
-
-	function getReadingTime(content: string): string {
-		const words = content
-			.replace(/<[^>]*>/g, '')
-			.trim()
-			.split(/\s+/).length;
-		const minutes = Math.max(1, Math.round(words / 200));
-
-		return `${minutes} min read`;
 	}
 
 	function getExcerpt(content: string): string {
@@ -175,7 +165,7 @@
 			<button
 				disabled={!pagination.hasPrevPage}
 				onclick={() => setPage(pagination.page - 1)}
-				class="flex cursor-pointer items-center gap-1.5 justify-self-start rounded-md border border-border px-3.5 py-1.5 text-sm text-muted-foreground transition-colors hover:border-foreground/30 hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
+				class="flex min-w-22 cursor-pointer items-center justify-center gap-1.5 justify-self-start rounded-md border border-border py-1.5 text-sm text-muted-foreground transition-colors hover:border-foreground/30 hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
 			>
 				<ChevronLeft size={13} />
 				Previous
@@ -188,7 +178,7 @@
 			<button
 				disabled={!pagination.hasNextPage}
 				onclick={() => setPage(pagination.page + 1)}
-				class="flex cursor-pointer items-center gap-1.5 justify-self-end rounded-md border border-border px-3.5 py-1.5 text-sm text-muted-foreground transition-colors hover:border-foreground/30 hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
+				class="flex min-w-20 cursor-pointer items-center gap-1.5 justify-self-end rounded-md border border-border px-3.5 py-1.5 text-sm text-muted-foreground transition-colors hover:border-foreground/30 hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
 			>
 				Next
 				<ChevronRight size={13} />
