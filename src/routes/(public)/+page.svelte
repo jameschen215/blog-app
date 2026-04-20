@@ -97,7 +97,7 @@
 		{#each sortedPosts as post (post.id)}
 			<a
 				href="/posts/{post.id}"
-				class="-mx-6 grid grid-cols-[1fr_auto] items-start gap-4 border-t border-border px-3 py-5 transition-colors hover:bg-accent/30"
+				class="-mx-6 grid grid-cols-1 items-start gap-4 border-t border-border px-3 py-5 transition-colors hover:bg-accent/30 sm:grid-cols-[1fr_auto]"
 			>
 				<!-- Left: text content -->
 				<div class="min-w-0">
@@ -140,9 +140,9 @@
 
 				<!-- Right: thumbnail placeholder -->
 				<div
-					class="size-20 shrink-0 rounded-md border border-border bg-muted/50 font-ibm uppercase {getThumbnailColor(
+					class="hidden size-20 shrink-0 rounded-md border border-border bg-muted/50 font-ibm uppercase sm:flex {getThumbnailColor(
 						post.title
-					)} flex items-center justify-center text-2xl font-medium"
+					)} items-center justify-center text-2xl font-medium"
 					aria-hidden="true"
 				>
 					{post.title[0]}
