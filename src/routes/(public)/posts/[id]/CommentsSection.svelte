@@ -7,6 +7,7 @@
 	import { formatCompactNum } from '$lib/utils/formatters';
 	import type { SubmitFunction } from '@sveltejs/kit';
 	import { format } from 'date-fns';
+	import { tick } from 'svelte';
 	import { toast } from 'svelte-sonner';
 
 	const MAX_LENGTH = CONSTANTS.COMMENT.MAX_LENGTH;
@@ -26,12 +27,18 @@
 
 	let { user, post, form }: Props = $props();
 
-	let isAuthenticated = $derived(!!user);
+	let authenticated = $derived(!!user);
 	let content = $state('');
 	let submitting = $state(false);
 	let remaining = $derived(Math.max(0, MAX_LENGTH - content.length));
 
 	let textarea = $state<HTMLTextAreaElement | null>(null);
+
+	// Edit state
+	let editingCommentId = $state<number | null>(null);
+	let editContent = $state('');
+	let editSubmitting = $state(false);
+	let editRemaining = $derived(Math.max(0, MAX_LENGTH - editContent.length));
 
 	export function focus() {
 		textarea?.focus();
@@ -39,6 +46,25 @@
 
 	export function scrollIntoView() {
 		textarea?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+	}
+
+	async function startEditing(commentId: number, currentContent: string) {
+		editingCommentId = commentId;
+		editContent = currentContent;
+
+		// Wait for DOM to update before focusing the edit textarea
+		await tick();
+
+		document.getElementById(`edit-textarea-${commentId}`)?.focus();
+	}
+
+	function cancelEditing() {
+		editingCommentId = null;
+		editContent = '';
+	}
+
+	function isEdited(createdAt: string, updatedAt: string): boolean {
+		return new Date(updatedAt).getTime() - new Date(createdAt).getTime() > 2000;
 	}
 
 	const handleCommentSubmit: SubmitFunction = () => {
@@ -63,6 +89,22 @@
 			}
 		};
 	};
+
+	const handleEditSubmit: SubmitFunction = () => {
+		editSubmitting = true;
+
+		return async ({ result, update }) => {
+			editSubmitting = false;
+
+			if (result.type === 'success') {
+				cancelEditing();
+				toast.success('Comment updated.');
+				await update();
+			} else if (result.type === 'failure') {
+				toast.error((result.data?.message as string) ?? 'Failed to update comment.');
+			}
+		};
+	};
 </script>
 
 <section>
@@ -72,7 +114,7 @@
 
 	<!-- Comment form -->
 	<form action="?/comment" method="post" use:enhance={handleCommentSubmit} class="mb-10">
-		{#if isAuthenticated}
+		{#if authenticated}
 			<div class="mb-3 flex items-center gap-2">
 				<Avatar username={user!.username} className="size-7 text-[12px]" />
 				<span class="text-sm font-medium">{user!.username}</span>
@@ -86,9 +128,9 @@
 				bind:this={textarea}
 				bind:value={content}
 				name="content"
-				placeholder={isAuthenticated ? 'What are your thoughts?' : 'Log in to leave a comment'}
+				placeholder={authenticated ? 'What are your thoughts?' : 'Log in to leave a comment'}
 				maxlength={MAX_LENGTH}
-				disabled={!isAuthenticated || submitting}
+				disabled={!authenticated || submitting}
 				class="w-full resize-none bg-transparent px-4 py-3 text-sm leading-relaxed text-foreground placeholder:text-muted-foreground/50 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
 				rows={3}
 			></textarea>
@@ -98,7 +140,7 @@
 					{remaining} left
 				</span>
 
-				{#if isAuthenticated}
+				{#if authenticated}
 					<button
 						type="submit"
 						disabled={!content.trim() || submitting}
@@ -111,7 +153,7 @@
 						href="/auth/login?redirect=/posts/{post.id}"
 						class="rounded-md border border-border px-3.5 py-1.5 text-xs text-muted-foreground transition-colors hover:border-foreground/30 hover:text-foreground"
 					>
-						Log in to comment
+						Login to comment
 					</a>
 				{/if}
 			</div>
@@ -127,31 +169,111 @@
 		<ul class="space-y-0">
 			{#each post.comments as comment (comment.id)}
 				<li class="border-t border-border py-6">
-					<div class="flex items-start gap-3">
-						{#if comment.author}
-							<Avatar username={comment.author.username} className="size-7 shrink-0 text-[11px]" />
-						{:else}
-							<div
-								class="justify-content flex size-7 shrink-0 items-center rounded-full border border-border bg-muted/50 text-[11px] font-medium text-muted-foreground"
-							>
-								?
-							</div>
-						{/if}
+					<!-- <div class="flex items-start gap-3"> -->
+					<div class="min-w-0 flex-1">
+						<!-- Head row -->
+						<div class="mb-1.5 flex items-baseline justify-between gap-2">
+							<div class="flex items-baseline gap-2">
+								{#if comment.author}
+									<Avatar
+										username={comment.author.username}
+										className="size-7 shrink-0 text-[11px]"
+									/>
+								{:else}
+									<div
+										class="justify-content flex size-7 shrink-0 items-center rounded-full border border-border bg-muted/50 text-[11px] font-medium text-muted-foreground"
+									>
+										?
+									</div>
+								{/if}
 
-						<div class="min-w-0 flex-1">
-							<div class="mb-1.5 flex items-baseline gap-2">
 								<span class="text-sm font-medium text-foreground">
 									{comment.author?.username ?? 'Deleted user'}
 								</span>
 								<span class="text-xs text-muted-foreground">
 									{format(comment.createdAt, 'MMM d, yyyy')}
 								</span>
+
+								{#if isEdited(comment.createdAt, comment.updatedAt)}
+									<span class="text-xs text-muted-foreground/50">edited</span>
+								{/if}
 							</div>
-							<p class="text-sm leading-relaxed text-muted-foreground">
+
+							<!-- Edit button - only for comment author -->
+							{#if user?.id === comment.author?.id && editingCommentId !== comment.id}
+								<button
+									type="button"
+									onclick={() => startEditing(comment.id, comment.content)}
+									class="text-xs text-muted-foreground/50 transition-colors hover:text-muted-foreground"
+								>
+									Edit
+								</button>
+							{/if}
+						</div>
+
+						<!-- View mode -->
+						{#if editingCommentId !== comment.id}
+							<p class="foreground ml-9 text-sm leading-relaxed text-muted-foreground">
 								{comment.content}
 							</p>
-						</div>
+							<!-- Edit mode -->
+						{:else}
+							<form
+								action="?/editComment"
+								method="post"
+								use:enhance={handleEditSubmit}
+								class="mt-1"
+							>
+								<input type="hidden" name="commentId" value={comment.id} />
+
+								<div
+									class="overflow-hidden rounded-md border border-border transition-colors focus-within:border-foreground/30"
+								>
+									<textarea
+										id="edit-textarea-{comment.id}"
+										bind:value={editContent}
+										name="content"
+										maxlength={MAX_LENGTH}
+										disabled={editSubmitting}
+										rows={3}
+										class="w-full resize-none bg-transparent px-3 py-2.5 text-sm leading-relaxed text-foreground focus:outline-none disabled:opacity-50"
+									></textarea>
+
+									<div
+										class="flex items-center justify-between border-t border-border bg-muted/30 px-3 py-2"
+									>
+										<span
+											class="text-xs {editRemaining === 0
+												? 'text-destructive'
+												: 'text-muted-foreground'}"
+										>
+											{editRemaining} left
+										</span>
+										<div class="flex items-center gap-2">
+											<button
+												type="button"
+												onclick={cancelEditing}
+												disabled={editSubmitting}
+												class="rounded-md border border-border px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:border-foreground/30 hover:text-foreground disabled:opacity-40"
+											>
+												Cancel
+											</button>
+											<button
+												type="submit"
+												disabled={!editContent.trim() ||
+													editSubmitting ||
+													editContent === comment.content}
+												class="rounded-md bg-foreground px-3 py-1.5 text-xs font-medium text-background transition-opacity disabled:pointer-events-none disabled:opacity-40"
+											>
+												{editSubmitting ? 'Saving...' : 'Save'}
+											</button>
+										</div>
+									</div>
+								</div>
+							</form>
+						{/if}
 					</div>
+					<!-- </div> -->
 				</li>
 			{/each}
 		</ul>

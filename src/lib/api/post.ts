@@ -75,14 +75,23 @@ export function updatePost(
 	return apiPut<{ post: PostWithAuthor }>(`/api/posts/${id}`, data, customFetch);
 }
 
-export function deleteComment(postId: number, commentId: number, customFetch = fetch) {
-	return apiDelete(`/api/posts/${postId}/comments/${commentId}`, customFetch);
+export async function likePost(id: number, customFetch = fetch) {
+	return apiPost(`/api/posts/${id}/like`, undefined, customFetch);
 }
 
 export function createComment(postId: number, content: string, customFetch = fetch) {
 	return apiPost(`/api/posts/${postId}/comments`, { content }, customFetch);
 }
 
-export async function likePost(id: number, customFetch = fetch) {
-	return apiPost(`/api/posts/${id}/like`, undefined, customFetch);
+export async function updateComment(
+	postId: number,
+	commentId: number,
+	content: string,
+	customFetch = fetch
+) {
+	return apiPut(`/api/posts/${postId}/comments/${commentId}`, { content }, customFetch);
+}
+
+export function deleteComment(postId: number, commentId: number, customFetch = fetch) {
+	return apiDelete(`/api/posts/${postId}/comments/${commentId}`, customFetch);
 }

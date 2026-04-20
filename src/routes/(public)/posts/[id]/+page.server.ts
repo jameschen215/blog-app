@@ -3,9 +3,9 @@ import { error, fail } from '@sveltejs/kit';
 import type { Actions } from './$types';
 
 import { APIError } from '$lib/api/client';
-import { getPost, likePost, createComment } from '$lib/api/post';
+import { getPost, likePost, createComment, updateComment } from '$lib/api/post';
 import { handleLoadError, handleActionError } from '$lib/utils/error-handlers';
-import { createCommentSchema } from '$lib/schema/comment.js';
+import { commentSchema } from '$lib/schema/comment';
 
 export async function load({ params, fetch }) {
 	const id = Number(params.id);
@@ -63,7 +63,7 @@ export const actions = {
 		const formData = await request.formData();
 		const data = Object.fromEntries(formData);
 
-		const validateResult = createCommentSchema.safeParse(data);
+		const validateResult = commentSchema.safeParse(data);
 
 		if (!validateResult.success) {
 			return fail(400, { errors: flattenError(validateResult.error).fieldErrors });
@@ -71,6 +71,37 @@ export const actions = {
 
 		try {
 			await createComment(postId, validateResult.data.content, fetch);
+			return { success: true };
+		} catch (err) {
+			return handleActionError(err);
+		}
+	},
+	editComment: async ({ params, request, fetch, locals }) => {
+		if (!locals.user) {
+			return fail(401, { message: 'You must be logged in to edit a comment' });
+		}
+
+		const postId = Number(params.id);
+		const formData = await request.formData();
+		const commentId = Number(formData.get('commentId'));
+		const content = formData.get('content') as string;
+
+		if (!Number.isInteger(postId) || postId < 1) {
+			error(400, 'Invalid post ID');
+		}
+
+		if (!Number.isInteger(commentId) || commentId < 1) {
+			return fail(400, 'Invalid comment ID');
+		}
+
+		const result = commentSchema.safeParse({ content });
+
+		if (!result.success) {
+			return fail(400, { errors: flattenError(result.error).fieldErrors });
+		}
+
+		try {
+			await updateComment(postId, commentId, content, fetch);
 			return { success: true };
 		} catch (err) {
 			return handleActionError(err);

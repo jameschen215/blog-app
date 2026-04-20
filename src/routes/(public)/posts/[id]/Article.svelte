@@ -17,7 +17,6 @@
 	<div class="border-b border-border py-3.5">
 		<a
 			href="/"
-			aria-label="Back to Home"
 			class="flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
 		>
 			<ChevronLeft size={13} />
@@ -38,14 +37,12 @@
 	<div class="mb-8 flex items-center gap-2.5">
 		<a
 			href="/users/{post.author.id}"
-			aria-label="To user page"
 			class="flex size-7 shrink-0 items-center justify-center rounded-full border border-border bg-muted/50 text-[12px] font-medium text-foreground uppercase transition-colors hover:border-foreground/30"
 		>
 			{post.author.username[0]}
 		</a>
 		<a
 			href="/users/{post.author.id}"
-			aria-label="To user page"
 			class="text-sm font-medium text-foreground transition-colors hover:underline hover:underline-offset-2"
 		>
 			{post.author.username}
