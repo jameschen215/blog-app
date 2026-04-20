@@ -93,11 +93,11 @@
 	</div>
 
 	<!-- Post list -->
-	<div>
+	<div class="px-6">
 		{#each sortedPosts as post (post.id)}
 			<a
 				href="/posts/{post.id}"
-				class="grid grid-cols-[1fr_auto] items-start gap-4 border-t border-border py-5 transition-colors hover:bg-accent/30"
+				class="-mx-6 grid grid-cols-[1fr_auto] items-start gap-4 border-t border-border px-3 py-5 transition-colors hover:bg-accent/30"
 			>
 				<!-- Left: text content -->
 				<div class="min-w-0">

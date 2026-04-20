@@ -10,6 +10,7 @@
 
 	import Avatar from '$lib/components/Avatar.svelte';
 	import type { AuthResultUser } from '$lib/types/data';
+	import { fade, slide } from 'svelte/transition';
 
 	interface Props {
 		user: AuthResultUser | null;
@@ -19,7 +20,7 @@
 	let authenticated = $derived(!!user);
 
 	// let redirect = $derived(page.url.pathname + page.url.hash);
-	let redirect = $derived(page.url.pathname + page.url.search);
+	let redirect = $derived(page.url.pathname + page.url.hash + page.url.search);
 
 	// Search state
 	let searchOpen = $state(false);
@@ -86,21 +87,28 @@
 	});
 </script>
 
-<header class="sticky top-0 z-20 w-full border-b border-border bg-background/80 backdrop-blur">
-	<div class="mx-auto flex h-14 w-full max-w-2xl items-center justify-between px-6">
+<header
+	bind:this={headerEl}
+	class="sticky top-0 z-20 w-full border-b border-border bg-background/80 backdrop-blur"
+>
+	<div class="relative mx-auto flex h-14 w-full max-w-2xl items-center justify-between px-6">
 		<!-- Brand -->
 		{#if !searchOpen}
-			<a
-				href="/"
-				class="font-anton text-xl tracking-normal text-foreground transition-opacity hover:opacity-70"
+			<div
+				class="flex w-full items-center justify-between transition-opacity duration-200"
+				class:opacity-0={searchOpen}
+				class:pointer-events-none={searchOpen}
 			>
-				The Blog
-			</a>
+				<a href="/" class="font-anton text-xl tracking-normal">The Blog</a>
+			</div>
 		{/if}
 
-		<!-- Search input (expanded) -->
+		<!-- Search overlay -->
 		{#if searchOpen}
-			<div class="flex flex-1 items-center gap-2">
+			<div
+				transition:fade={{ duration: 150 }}
+				class="absolute inset-x-6 flex items-center gap-2 bg-background"
+			>
 				<Search size={15} class="shrink-0 text-muted-foreground" />
 				<input
 					type="text"
@@ -124,7 +132,7 @@
 
 		<!-- Right actions -->
 		{#if !searchOpen}
-			<div class="flex items-center gap-1">
+			<div transition:fade={{ duration: 150 }} class="flex items-center gap-1">
 				<!-- Search toggle -->
 				<Button
 					variant="ghost"
