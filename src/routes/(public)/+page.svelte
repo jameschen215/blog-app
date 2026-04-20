@@ -97,7 +97,7 @@
 		{#each sortedPosts as post (post.id)}
 			<a
 				href="/posts/{post.id}"
-				class="-mx-6 grid grid-cols-1 items-start gap-4 border-t border-border px-3 py-5 transition-colors hover:bg-accent/30 sm:grid-cols-[1fr_auto]"
+				class="-mx-6 grid grid-cols-1 items-start gap-4 border-t border-border py-5 transition-colors hover:bg-accent/30 sm:grid-cols-[1fr_auto] sm:px-3"
 			>
 				<!-- Left: text content -->
 				<div class="min-w-0">
