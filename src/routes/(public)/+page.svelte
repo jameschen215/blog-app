@@ -93,61 +93,63 @@
 	</div>
 
 	<!-- Post list -->
-	<div class="px-6">
+	<ul class="px-6">
 		{#each sortedPosts as post (post.id)}
-			<a
-				href="/posts/{post.id}"
-				class="-mx-6 grid grid-cols-1 items-start gap-4 border-t border-border py-5 transition-colors hover:bg-accent/30 sm:grid-cols-[1fr_auto] sm:px-3"
-			>
-				<!-- Left: text content -->
-				<div class="min-w-0">
-					<!-- Author + date -->
-					<div class="mb-2.5 flex items-center gap-2">
-						<Avatar username={post.author.username} className="size-6 text-[12px]" />
-						<span class="text-sm text-muted-foreground">{post.author.username}</span>
-						<span class="text-muted-foreground">·</span>
-						<span class="text-sm text-muted-foreground">{format(post.createdAt, 'MMM d')}</span>
-					</div>
-
-					<!-- Title -->
-					<h2
-						class="mb-1.5 line-clamp-2 font-ibm text-[17px] leading-snug font-medium tracking-tight text-foreground"
-					>
-						{post.title}
-					</h2>
-
-					<!-- Excerpt -->
-					<p class="mb-3.5 line-clamp-2 text-sm leading-relaxed text-muted-foreground">
-						{getExcerpt(post.content)}
-					</p>
-
-					<!-- Stats -->
-					<div class="flex items-center gap-4">
-						<span class="flex items-center gap-1 text-xs text-muted-foreground">
-							<Heart size={13} />
-							{formatCompactNum(post.likesCount)}
-						</span>
-						<span class="flex items-center gap-1 text-xs text-muted-foreground">
-							<MessageSquare size={13} />
-							{formatCompactNum(post.commentsCount)}
-						</span>
-						<span class="flex items-center gap-1 text-xs text-muted-foreground">
-							<Clock size={13} />
-							{getReadingTime(post.content)}
-						</span>
-					</div>
-				</div>
-
-				<!-- Right: thumbnail placeholder -->
-				<div
-					class="hidden size-20 shrink-0 rounded-md border border-border bg-muted/50 font-ibm uppercase sm:flex {getThumbnailColor(
-						post.title
-					)} items-center justify-center text-2xl font-medium"
-					aria-hidden="true"
+			<li>
+				<a
+					href="/posts/{post.id}"
+					class="-mx-6 grid grid-cols-1 items-start gap-4 border-t border-border py-5 transition-colors hover:bg-accent/30 sm:grid-cols-[1fr_auto] sm:px-3"
 				>
-					{post.title[0]}
-				</div>
-			</a>
+					<!-- Left: text content -->
+					<div class="min-w-0">
+						<!-- Author + date -->
+						<div class="mb-2.5 flex items-center gap-2">
+							<Avatar username={post.author.username} className="size-6 text-[12px]" />
+							<span class="text-sm text-muted-foreground">{post.author.username}</span>
+							<span class="text-muted-foreground">·</span>
+							<span class="text-sm text-muted-foreground">{format(post.createdAt, 'MMM d')}</span>
+						</div>
+
+						<!-- Title -->
+						<h2
+							class="mb-1.5 line-clamp-2 font-ibm text-[17px] leading-snug font-medium tracking-tight text-foreground"
+						>
+							{post.title}
+						</h2>
+
+						<!-- Excerpt -->
+						<p class="mb-3.5 line-clamp-2 text-sm leading-relaxed text-muted-foreground">
+							{getExcerpt(post.content)}
+						</p>
+
+						<!-- Stats -->
+						<div class="flex items-center gap-4">
+							<span class="flex items-center gap-1 text-xs text-muted-foreground">
+								<Heart size={13} />
+								{formatCompactNum(post.likesCount)}
+							</span>
+							<span class="flex items-center gap-1 text-xs text-muted-foreground">
+								<MessageSquare size={13} />
+								{formatCompactNum(post.commentsCount)}
+							</span>
+							<span class="flex items-center gap-1 text-xs text-muted-foreground">
+								<Clock size={13} />
+								{getReadingTime(post.content)}
+							</span>
+						</div>
+					</div>
+
+					<!-- Right: thumbnail placeholder -->
+					<div
+						class="hidden size-20 shrink-0 rounded-md border border-border bg-muted/50 font-ibm uppercase sm:flex {getThumbnailColor(
+							post.title
+						)} items-center justify-center text-2xl font-medium"
+						aria-hidden="true"
+					>
+						{post.title[0]}
+					</div>
+				</a>
+			</li>
 		{/each}
 
 		<!-- Empty state -->
@@ -162,7 +164,7 @@
 				{/if}
 			</div>
 		{/if}
-	</div>
+	</ul>
 
 	<!-- Pagination - hidden during search since we filter client-side -->
 	{#if pagination && pagination.totalPages > 1 && !search}
