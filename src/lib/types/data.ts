@@ -62,7 +62,6 @@ export type PostsResult = {
 export type UserResult = {
 	user: Pick<User, 'id' | 'username' | 'role'>;
 	posts: PostWithAuthor[];
-	pagination: PaginationMeta;
 };
 
 export type PostDetailResult = { post: PostDetail };

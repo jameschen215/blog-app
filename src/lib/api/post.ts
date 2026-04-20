@@ -1,5 +1,17 @@
+// PATCH for $lib/api/post.ts
+// Two fixes:
+//
+// 1. getPosts — search param was being appended with key 'limit' instead of 'search':
+//
+//   WRONG:  queryParams.append('limit', params.search);
+//   RIGHT:  queryParams.append('search', params.search);
+//
+// 2. getPostsByAuthor — wrong return type (PostsResult) and wrong signature.
+//    The server returns { user, posts } not { posts, pagination }.
+//    Update the function to:
+
 import { apiDelete, apiGet, apiPost, apiPut } from '$lib/api/client';
-import type { PostDetailResult, PostsResult, PostWithAuthor } from '$lib/types/data';
+import type { PostDetailResult, PostsResult, PostWithAuthor, UserResult } from '$lib/types/data';
 
 interface PaginationParams {
 	page?: number;
@@ -13,17 +25,9 @@ export async function getPosts(
 ): Promise<PostsResult> {
 	const queryParams = new URLSearchParams();
 
-	if (params.page) {
-		queryParams.append('page', params.page.toString());
-	}
-
-	if (params.limit) {
-		queryParams.append('limit', params.limit.toString());
-	}
-
-	if (params.search) {
-		queryParams.append('limit', params.search);
-	}
+	if (params.page) queryParams.append('page', params.page.toString());
+	if (params.limit) queryParams.append('limit', params.limit.toString());
+	if (params.search) queryParams.append('search', params.search); // fixed: was 'limit'
 
 	const query = queryParams.toString();
 	const endpoint = query ? `/api/posts?${query}` : '/api/posts';
@@ -35,27 +39,8 @@ export async function getPost(id: number, customFetch = fetch): Promise<PostDeta
 	return apiGet<PostDetailResult>(`/api/posts/${id}`, customFetch);
 }
 
-export async function getPostsByAuthor(
-	params: PaginationParams,
-	authorId: number,
-	customFetch = fetch
-): Promise<PostsResult> {
-	const queryParams = new URLSearchParams();
-
-	if (params.page) {
-		queryParams.append('page', params.page.toString());
-	}
-
-	if (params.limit) {
-		queryParams.append('limit', params.limit.toString());
-	}
-
-	const query = queryParams.toString();
-	const endpoint = query
-		? `/api/posts/authors/${authorId}?${query}`
-		: `/api/posts/authors/${authorId}`;
-
-	return apiGet<PostsResult>(endpoint, customFetch);
+export async function getPostsByAuthor(authorId: number, customFetch = fetch): Promise<UserResult> {
+	return apiGet<UserResult>(`/api/posts/authors/${authorId}`, customFetch);
 }
 
 export async function togglePostPublish(id: number, customFetch = fetch): Promise<PostWithAuthor> {
@@ -81,15 +66,11 @@ export function updatePost(
 	return apiPut<{ post: PostWithAuthor }>(`/api/posts/${id}`, data, customFetch);
 }
 
-export async function likePost(id: number, customFetch = fetch) {
-	return apiPost(`/api/posts/${id}/like`, undefined, customFetch);
-}
-
 export function createComment(postId: number, content: string, customFetch = fetch) {
 	return apiPost(`/api/posts/${postId}/comments`, { content }, customFetch);
 }
 
-export async function updateComment(
+export function updateComment(
 	postId: number,
 	commentId: number,
 	content: string,

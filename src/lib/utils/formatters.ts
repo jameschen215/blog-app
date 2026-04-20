@@ -17,3 +17,19 @@ export function getReadingTime(content: string): string {
 
 	return `${minutes} min read`;
 }
+
+export function getExcerpt(content: string): string {
+	return content.replace(/<[^>]*>/g, '').trim();
+}
+
+const THUMBNAIL_COLORS = [
+	'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-200',
+	'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200',
+	'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200',
+	'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-200',
+	'bg-violet-100 text-violet-800 dark:bg-violet-950 dark:text-violet-200'
+];
+
+export function getThumbnailColor(title: string): string {
+	return THUMBNAIL_COLORS[title.charCodeAt(0) % THUMBNAIL_COLORS.length];
+}
