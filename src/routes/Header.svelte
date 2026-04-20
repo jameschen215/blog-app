@@ -2,128 +2,209 @@
 	import { page } from '$app/state';
 	import { enhance } from '$app/forms';
 	import { goto } from '$app/navigation';
-	import { toggleMode } from 'mode-watcher';
+	import { tick } from 'svelte';
 
-	import Menu from '@lucide/svelte/icons/menu';
-	import SunIcon from '@lucide/svelte/icons/sun';
-	import LogIn from '@lucide/svelte/icons/log-in';
-	import MoonIcon from '@lucide/svelte/icons/moon';
-	import Logout from '@lucide/svelte/icons/log-out';
-	import UserPlus from '@lucide/svelte/icons/user-plus';
-
-	import type { AuthResultUser } from '$lib/types/data';
-	import Avatar from '$lib/components/Avatar.svelte';
 	import Button from '$lib/components/ui/button/button.svelte';
 	import * as DropdownMenu from '$lib/components/ui/dropdown-menu/index.js';
-	import { SquarePen } from '@lucide/svelte';
+	import { Search, SquarePen, X, Menu, LogIn, LogOut, UserPlus } from '@lucide/svelte';
+
+	import Avatar from '$lib/components/Avatar.svelte';
+	import type { AuthResultUser } from '$lib/types/data';
 
 	interface Props {
 		user: AuthResultUser | null;
 	}
 
 	let { user }: Props = $props();
-	let isAuthenticated = $derived(!!user);
+	let authenticated = $derived(!!user);
 
-	let redirect = $derived(page.url.pathname + page.url.hash);
+	// let redirect = $derived(page.url.pathname + page.url.hash);
+	let redirect = $derived(page.url.pathname + page.url.search);
+
+	// Search state
+	let searchOpen = $state(false);
+	let searchInput = $state<HTMLInputElement | null>(null);
+	let searchValue = $derived(page.url.searchParams.get('search') ?? '');
+
+	async function openSearch() {
+		searchOpen = true;
+		await tick();
+		searchInput?.focus();
+	}
+
+	function closeSearch() {
+		searchOpen = false;
+		searchValue = '';
+
+		syncUrl('');
+	}
+
+	function syncUrl(value: string) {
+		const url = new URL(page.url);
+
+		if (value.trim()) {
+			url.searchParams.set('search', value.trim());
+			url.searchParams.delete('page');
+		} else {
+			url.searchParams.delete('search');
+		}
+
+		goto(url, { replaceState: true, keepFocus: true, noScroll: true });
+	}
+
+	let debounceTimer: ReturnType<typeof setTimeout>;
+
+	function handleSearchInput() {
+		console.log({ searchValue });
+
+		clearTimeout(debounceTimer);
+
+		debounceTimer = setTimeout(() => syncUrl(searchValue), 300);
+	}
+
+	function handleSearchKeydown(e: KeyboardEvent) {
+		if (e.key === 'Escape') {
+			closeSearch();
+		}
+	}
+
+	// Close search input when clicking out of header
+	let headerEl = $state<HTMLElement | null>(null);
+
+	$effect(() => {
+		if (!searchOpen) return;
+
+		function handleClick(e: MouseEvent) {
+			if (headerEl && !headerEl.contains(e.target as Node)) {
+				closeSearch();
+			}
+		}
+
+		document.addEventListener('mousedown', handleClick);
+
+		return () => document.removeEventListener('mousedown', handleClick);
+	});
 </script>
 
-<header
-	class="bg-background/50 sticky top-0 z-20 h-16 w-full border-b border-zinc-100 backdrop-blur dark:border-zinc-900"
->
-	<div class="mx-auto flex h-full w-full max-w-4xl items-center justify-between px-4">
-		<!-- brand -->
-		<Button variant="link" class="p-0 hover:no-underline">
-			<a href="/" aria-label="The blog homepage">
-				<!-- logo -->
-				<span role="img" aria-hidden="true" aria-label="The blog logo" class="font-anton text-xl">
-					The blog
-				</span>
-
-				<span class="sr-only">The Blog - Go to homepage</span>
-			</a>
-		</Button>
-
-		<div class="flex items-center gap-2">
-			<!-- write button -->
-			<Button
-				variant="ghost"
-				size="icon"
-				onclick={() => goto('/posts/new')}
-				class="cursor-pointer rounded-full"
-				title="Write"
+<header class="sticky top-0 z-20 w-full border-b border-border bg-background/80 backdrop-blur">
+	<div class="mx-auto flex h-14 w-full max-w-2xl items-center justify-between px-6">
+		<!-- Brand -->
+		{#if !searchOpen}
+			<a
+				href="/"
+				class="font-anton text-xl tracking-normal text-foreground transition-opacity hover:opacity-70"
 			>
-				<SquarePen class="size-4.5" strokeWidth={1.5} />
-			</Button>
+				The Blog
+			</a>
+		{/if}
 
-			<!-- theme toggle -->
-			<Button onclick={toggleMode} variant="ghost" size="icon" class="cursor-pointer rounded-full">
-				<SunIcon
-					strokeWidth={1.5}
-					class="size-4.5 scale-100 rotate-0 transition-all! dark:scale-0 dark:-rotate-90"
+		<!-- Search input (expanded) -->
+		{#if searchOpen}
+			<div class="flex flex-1 items-center gap-2">
+				<Search size={15} class="shrink-0 text-muted-foreground" />
+				<input
+					type="text"
+					bind:this={searchInput}
+					bind:value={searchValue}
+					placeholder="Search posts..."
+					oninput={handleSearchInput}
+					onkeydown={handleSearchKeydown}
+					class="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none"
 				/>
+				<button
+					type="button"
+					aria-label="Close search"
+					onclick={closeSearch}
+					class="shrink-0 cursor-pointer rounded-full p-1 text-muted-foreground transition-colors hover:text-foreground"
+				>
+					<X size={15} />
+				</button>
+			</div>
+		{/if}
 
-				<MoonIcon
-					strokeWidth={1.5}
-					class="absolute size-4.5 scale-0 rotate-90 transition-all! dark:scale-100 dark:rotate-0"
-				/>
+		<!-- Right actions -->
+		{#if !searchOpen}
+			<div class="flex items-center gap-1">
+				<!-- Search toggle -->
+				<Button
+					variant="ghost"
+					size="icon"
+					aria-label="Search posts"
+					onclick={openSearch}
+					class="cursor-pointer rounded-full"
+				>
+					<Search class="size-[1.1rem]" />
+				</Button>
 
-				<span class="sr-only">Toggle theme</span>
-			</Button>
+				<!-- Write - only shown when authenticated -->
+				{#if authenticated}
+					<Button
+						variant="ghost"
+						size="icon"
+						aria-label="Write a post"
+						href="/dashboard/posts/new"
+						class="cursor-pointer rounded-full"
+					>
+						<SquarePen class="size-[1.1rem]" />
+					</Button>
+				{/if}
 
-			<!-- dropdown menu -->
-			<DropdownMenu.Root>
-				<DropdownMenu.Trigger>
-					{#snippet child({ props })}
-						<Button
-							{...props}
-							variant="ghost"
-							size="icon"
-							class="group cursor-pointer rounded-full px-0!"
-						>
-							{#if isAuthenticated}
-								<Avatar username={user!.username} className="group-hover:border-transparent" />
-							{:else}
-								<Menu class="h-[1.2rem] w-[1.2rem]" />
-							{/if}
-						</Button>
-					{/snippet}
-				</DropdownMenu.Trigger>
-
-				<DropdownMenu.Content class="w-40 rounded-sm p-2" align="start">
-					{#if isAuthenticated}
-						<DropdownMenu.Label>My Account</DropdownMenu.Label>
-						<DropdownMenu.Separator class="mb-2" />
-					{/if}
-
-					<DropdownMenu.Group class="space-y-1">
-						{#if isAuthenticated}
-							<form action="/auth/logout" method="post" use:enhance>
-								<DropdownMenu.Item class="w-full cursor-pointer">
-									{#snippet child({ props })}
-										<button {...props} type="submit">
-											<Logout /> Logout
-										</button>
-									{/snippet}
-								</DropdownMenu.Item>
-							</form>
-						{:else}
-							<DropdownMenu.Item
-								class="cursor-pointer"
-								onclick={() => goto(`/auth/login?redirect=${encodeURIComponent(redirect)}`)}
+				<!-- Avatar / menu dropdown -->
+				<DropdownMenu.Root>
+					<DropdownMenu.Trigger>
+						{#snippet child({ props })}
+							<Button
+								{...props}
+								variant="ghost"
+								size="icon"
+								aria-label="Menu"
+								class="group cursor-pointer rounded-full px-0!"
 							>
-								<LogIn /> Login
-							</DropdownMenu.Item>
+								{#if authenticated}
+									<Avatar username={user!.username} className="group-hover:border-transparent" />
+								{:else}
+									<Menu class="size-[1.1rem]" />
+								{/if}
+							</Button>
+						{/snippet}
+					</DropdownMenu.Trigger>
 
-							<DropdownMenu.Item
-								class="cursor-pointer"
-								onclick={() => goto(`/auth/register?redirect=${encodeURIComponent(redirect)}`)}
-							>
-								<UserPlus /> Register
-							</DropdownMenu.Item>
+					<DropdownMenu.Content class="w-40 rounded-sm p-2" align="end">
+						{#if authenticated}
+							<DropdownMenu.Label class="text-xs">{user!.username}</DropdownMenu.Label>
+							<DropdownMenu.Separator class="mb-1" />
 						{/if}
-					</DropdownMenu.Group>
-				</DropdownMenu.Content>
-			</DropdownMenu.Root>
-		</div>
+
+						<DropdownMenu.Group class="space-y-0.5">
+							{#if authenticated}
+								<form action="/auth/logout" method="post" use:enhance>
+									<DropdownMenu.Item class="w-full cursor-pointer">
+										{#snippet child({ props })}
+											<button {...props} type="submit">
+												<LogOut class="size-[1.1rem]" /> Logout
+											</button>
+										{/snippet}
+									</DropdownMenu.Item>
+								</form>
+							{:else}
+								<DropdownMenu.Item
+									class="cursor-pointer"
+									onclick={() => goto(`/auth/login?redirect=${encodeURIComponent(redirect)}`)}
+								>
+									<LogIn class="size-4" /> Login
+								</DropdownMenu.Item>
+
+								<DropdownMenu.Item
+									class="cursor-pointer"
+									onclick={() => goto(`/auth/register?redirect=${encodeURIComponent(redirect)}`)}
+								>
+									<UserPlus class="size-4" /> Register
+								</DropdownMenu.Item>
+							{/if}
+						</DropdownMenu.Group>
+					</DropdownMenu.Content>
+				</DropdownMenu.Root>
+			</div>
+		{/if}
 	</div>
 </header>

@@ -4,7 +4,9 @@ import type { PostDetailResult, PostsResult, PostWithAuthor } from '$lib/types/d
 interface PaginationParams {
 	page?: number;
 	limit?: number;
+	search?: string;
 }
+
 export async function getPosts(
 	params: PaginationParams,
 	customFetch = fetch
@@ -17,6 +19,10 @@ export async function getPosts(
 
 	if (params.limit) {
 		queryParams.append('limit', params.limit.toString());
+	}
+
+	if (params.search) {
+		queryParams.append('limit', params.search);
 	}
 
 	const query = queryParams.toString();

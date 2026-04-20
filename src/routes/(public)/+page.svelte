@@ -22,16 +22,18 @@
 	];
 
 	let sort = $derived((page.url.searchParams.get('sort') ?? 'latest') as SortKey);
+	let search = $derived(page.url.searchParams.get('search')?.trim() ?? '');
 
 	// Note: this sorts within the current page only.
 	// For true global sorting, the server API would need a sort param.
 	let sortedPosts = $derived.by(() => {
-		const copy = [...posts];
-		if (sort === 'likes') return copy.sort((a, b) => b.likesCount - a.likesCount);
+		let result = [...posts];
 
-		if (sort === 'comments') return copy.sort((a, b) => b.commentsCount - a.commentsCount);
+		if (sort === 'likes') return result.sort((a, b) => b.likesCount - a.likesCount);
 
-		return copy.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+		if (sort === 'comments') return result.sort((a, b) => b.commentsCount - a.commentsCount);
+
+		return result.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 	});
 
 	function setSort(value: SortKey) {
@@ -95,7 +97,6 @@
 		{#each sortedPosts as post (post.id)}
 			<a
 				href="/posts/{post.id}"
-				aria-label="Link to post"
 				class="grid grid-cols-[1fr_auto] items-start gap-4 border-t border-border py-5 transition-colors hover:bg-accent/30"
 			>
 				<!-- Left: text content -->
@@ -152,16 +153,20 @@
 		<!-- Empty state -->
 		{#if sortedPosts.length === 0}
 			<div class="border-t border-border text-center">
-				<p class="text-sm text-muted-foreground">No posts yet.</p>
+				{#if search}
+					<p class="text-sm text-muted-foreground">
+						No posts matching <span class="text-foreground">{search}</span>
+					</p>
+				{:else}
+					<p class="text-sm text-muted-foreground">No posts yet.</p>
+				{/if}
 			</div>
 		{/if}
 	</div>
 
-	<!-- Pagination -->
-	{#if pagination && pagination.totalPages > 1}
-		<div
-			class="mt-6 grid grid-cols-3 items-center justify-items-center border-t border-border pt-5"
-		>
+	<!-- Pagination - hidden during search since we filter client-side -->
+	{#if pagination && pagination.totalPages > 1 && !search}
+		<div class="grid grid-cols-3 items-center justify-items-center border-t border-border pt-5">
 			<button
 				disabled={!pagination.hasPrevPage}
 				onclick={() => setPage(pagination.page - 1)}
