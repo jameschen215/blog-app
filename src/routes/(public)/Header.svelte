@@ -180,7 +180,7 @@
 								{#if authenticated}
 									<Avatar
 										username={user!.username}
-										className="w-full h-full group-hover:border-transparent"
+										className="size-8 group-hover:border-transparent"
 									/>
 								{:else}
 									<Menu class="size-[1.1rem]" />

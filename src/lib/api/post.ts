@@ -1,14 +1,4 @@
-// PATCH for $lib/api/post.ts
-// Two fixes:
-//
-// 1. getPosts — search param was being appended with key 'limit' instead of 'search':
-//
-//   WRONG:  queryParams.append('limit', params.search);
-//   RIGHT:  queryParams.append('search', params.search);
-//
-// 2. getPostsByAuthor — wrong return type (PostsResult) and wrong signature.
-//    The server returns { user, posts } not { posts, pagination }.
-//    Update the function to:
+// $lib/api/post.ts
 
 import { apiDelete, apiGet, apiPost, apiPut } from '$lib/api/client';
 import type { PostDetailResult, PostsResult, PostWithAuthor, UserResult } from '$lib/types/data';
@@ -17,6 +7,7 @@ interface PaginationParams {
 	page?: number;
 	limit?: number;
 	search?: string;
+	sort?: 'latest' | 'likes' | 'comments';
 }
 
 export async function getPosts(
@@ -27,7 +18,8 @@ export async function getPosts(
 
 	if (params.page) queryParams.append('page', params.page.toString());
 	if (params.limit) queryParams.append('limit', params.limit.toString());
-	if (params.search) queryParams.append('search', params.search); // fixed: was 'limit'
+	if (params.search) queryParams.append('search', params.search);
+	if (params.sort) queryParams.append('sort', params.sort);
 
 	const query = queryParams.toString();
 	const endpoint = query ? `/api/posts?${query}` : '/api/posts';

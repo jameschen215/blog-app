@@ -6,7 +6,12 @@
 	import { Heart, Clock, ChevronLeft, ChevronRight, MessageSquare } from '@lucide/svelte';
 
 	import Avatar from '$lib/components/Avatar.svelte';
-	import { formatCompactNum, getReadingTime } from '$lib/utils/formatters';
+	import {
+		formatCompactNum,
+		getExcerpt,
+		getReadingTime,
+		getThumbnailColor
+	} from '$lib/utils/formatters';
 
 	let { data }: PageProps = $props();
 
@@ -24,45 +29,17 @@
 	let sort = $derived((page.url.searchParams.get('sort') ?? 'latest') as SortKey);
 	let search = $derived(page.url.searchParams.get('search')?.trim() ?? '');
 
-	// Note: this sorts within the current page only.
-	// For true global sorting, the server API would need a sort param.
-	let sortedPosts = $derived.by(() => {
-		let result = [...posts];
-
-		if (sort === 'likes') return result.sort((a, b) => b.likesCount - a.likesCount);
-
-		if (sort === 'comments') return result.sort((a, b) => b.commentsCount - a.commentsCount);
-
-		return result.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-	});
-
 	function setSort(value: SortKey) {
 		const url = new URL(page.url);
 		url.searchParams.set('sort', value);
 		url.searchParams.delete('page');
-		goto(url.toString());
+		goto(url.toString(), { invalidateAll: true });
 	}
 
 	function setPage(nextPage: number) {
 		const url = new URL(page.url);
 		url.searchParams.set('page', String(nextPage));
 		goto(url.toString());
-	}
-
-	function getExcerpt(content: string): string {
-		return content.replace(/<[^>]*>/g, '').trim();
-	}
-
-	const THUMBNAIL_COLORS = [
-		'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-200',
-		'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200',
-		'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200',
-		'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-200',
-		'bg-violet-100 text-violet-800 dark:bg-violet-950 dark:text-violet-200'
-	];
-
-	function getThumbnailColor(title: string): string {
-		return THUMBNAIL_COLORS[title.charCodeAt(0) % THUMBNAIL_COLORS.length];
 	}
 </script>
 
@@ -94,7 +71,7 @@
 
 	<!-- Post list -->
 	<ul class="px-6">
-		{#each sortedPosts as post (post.id)}
+		{#each posts as post (post.id)}
 			<li>
 				<a
 					href="/posts/{post.id}"
@@ -153,7 +130,7 @@
 		{/each}
 
 		<!-- Empty state -->
-		{#if sortedPosts.length === 0}
+		{#if posts.length === 0}
 			<div class="border-t border-border text-center">
 				{#if search}
 					<p class="text-sm text-muted-foreground">
