@@ -12,7 +12,7 @@
 
 	import { getExcerpt } from '$lib/utils/formatters';
 	import { sanitizeHtml } from '$lib/utils/sanitize';
-	import TiptapEditor from '../[id]/_components/TiptapEditor.svelte';
+	import TiptapEditor from '../_components/TiptapEditor.svelte';
 
 	const STORAGE_KEY = 'draft:new-post';
 

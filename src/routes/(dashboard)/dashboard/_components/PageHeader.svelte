@@ -6,7 +6,7 @@
 
 <div class="mb-8 flex items-start justify-between gap-4">
 	<div>
-		<h1 class="font-ibm text-3xl font-medium tracking-tight">
+		<h1 class="font-roboto text-3xl font-medium tracking-tight">
 			{user.username}
 		</h1>
 

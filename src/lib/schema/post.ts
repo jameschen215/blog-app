@@ -16,13 +16,7 @@ export const createPostSchema = z.object({
 
 export const updatePostSchema = createPostSchema.partial();
 
-export const deleteCommentOnPostSchema = z.object({
-	postId: z.coerce.number().int().positive(),
-	commentId: z.coerce.number().int().positive()
-});
-
 export type TogglePublishInput = z.infer<typeof togglePublishSchema>;
 export type DeletePostInput = z.infer<typeof deletePostSchema>;
 export type CreatePostInput = z.infer<typeof createPostSchema>;
 export type UpdatePostInput = z.infer<typeof updatePostSchema>;
-export type DeleteCommentOnPostInput = z.infer<typeof deleteCommentOnPostSchema>;

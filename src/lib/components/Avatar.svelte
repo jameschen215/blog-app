@@ -6,7 +6,7 @@
 
 <div
 	class={cn(
-		'flex items-center justify-center rounded-full border border-zinc-100 text-lg font-semibold dark:border-zinc-900',
+		'flex items-center justify-center rounded-full border border-border text-lg font-semibold dark:border-zinc-900',
 		className
 	)}
 >

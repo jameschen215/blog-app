@@ -8,7 +8,7 @@
 	import * as Field from '$lib/components/ui/field/index.js';
 	import Button from '$lib/components/ui/button/button.svelte';
 	import { goto } from '$app/navigation';
-	import AuthFormField from '$lib/components/AuthFormField.svelte';
+	import AuthFormField from '../_components/AuthFormField.svelte';
 
 	let { form } = $props();
 	let submitting = $state(false);
@@ -81,7 +81,7 @@
 
 <div class="mt-10 flex w-full max-w-md flex-1 sm:mt-20">
 	<form class="w-full px-4 sm:px-8" method="post" novalidate use:enhance={handleSubmit}>
-		<h1 class="font-ibm mb-12 scroll-m-20 text-3xl font-extrabold tracking-tight lg:text-4xl">
+		<h1 class="mb-12 scroll-m-20 font-ibm text-3xl font-extrabold tracking-tight lg:text-4xl">
 			Login
 		</h1>
 

@@ -82,7 +82,6 @@ bun.lockb
 		"bradlc.vscode-tailwindcss"
 	]
 }
-
 ```
 
 # .vscode/settings.json
@@ -94,7 +93,6 @@ bun.lockb
 	},
 	"git.ignoreLimitWarning": true
 }
-
 ```
 
 # components.json
@@ -116,7 +114,6 @@ bun.lockb
 	"typescript": true,
 	"registry": "https://shadcn-svelte.com/registry"
 }
-
 ```
 
 # eslint.config.js
@@ -170,7 +167,6 @@ export default defineConfig(
 		rules: {}
 	}
 );
-
 ```
 
 # package.json
@@ -235,7 +231,6 @@ export default defineConfig(
 		"zod": "^4.x"
 	}
 }
-
 ```
 
 # README.md
@@ -250,14 +245,18 @@ Everything you need to build a Svelte project, powered by [`sv`](https://github.
 If you're seeing this, you've probably already done this step. Congrats!
 
 \`\`\`sh
+
 # create a new project
+
 npx sv create my-app
 \`\`\`
 
 To recreate this project with the same configuration:
 
 \`\`\`sh
+
 # recreate this project
+
 npx sv@0.15.1 create --template minimal --types ts --add prettier eslint tailwindcss="plugins:typography" --install npm blog-app
 \`\`\`
 
@@ -269,6 +268,7 @@ Once you've created a project and installed dependencies with `npm install` (or 
 npm run dev
 
 # or start the server and open the app in a new browser tab
+
 npm run dev -- --open
 \`\`\`
 
@@ -284,11 +284,54 @@ You can preview the production build with `npm run preview`.
 
 > To deploy your app, you may need to install an [adapter](https://svelte.dev/docs/kit/adapters) for your target environment.
 
+### Full-viewport layout inside a scrollable parent
+
+I wanted the post edit page to fill the viewport with only the editor
+content scrolling — fixed title at the top, fixed toolbar, scrollable
+body in the middle, fixed save bar at the bottom. A classic flex-column
+layout with one `flex-1 overflow-y-auto` child.
+
+The catch: flex containment requires an **unbroken chain** of
+`overflow-hidden` from the viewport down to the scrollable element. If
+any ancestor lets content overflow, every descendant's containment
+becomes meaningless and you get a page-level scroll instead.
+
+The dashboard `(dashboard)/+layout.svelte` uses `min-h-screen` with
+natural flow, which is correct for every other dashboard page — post
+list, new post — that expects the page to grow and scroll normally.
+Forcing the whole layout to `h-screen overflow-hidden` would break all
+of those.
+
+**The fix was to take `EditMode` out of flow entirely:**
+
+\`\`\`svelte
+
+<section class="fixed inset-x-0 top-14 bottom-0 flex flex-col overflow-hidden bg-background">
+	<form class="mx-auto flex w-full max-w-4xl flex-1 flex-col overflow-hidden px-6 py-6">
+		<!-- title, toolbar, editor, bottom bar -->
+	</form>
+</section>
+\`\`\`
+
+`fixed inset-x-0 bottom-0 top-14` positions the section flush to the
+viewport, starting 56px below the top to clear the header. Because it's
+fixed, it escapes every parent's layout constraints and gets a real
+fixed height from the viewport itself — which is what flex column
+layout needs to distribute space properly.
+
+Inside, `mx-auto max-w-4xl px-6` on the form keeps the same centered
+width as the rest of the dashboard, so the page looks visually
+continuous even though it's technically a layout escape hatch.
+
+**Takeaway:** when you need one page to behave like a full-viewport app
+while sibling pages use normal document flow, don't fight the parent
+layout — step outside it with `fixed` positioning. Trying to retrofit
+`overflow-hidden` up the tree breaks everything above.
+
 ## Handy copy
 
 <script lang="ts">
 </script>
-
 ```
 
 # src/app.d.ts
@@ -330,7 +373,6 @@ export {};
 		<div style="display: contents">%sveltekit.body%</div>
 	</body>
 </html>
-
 ```
 
 # src/hooks.server.ts
@@ -533,17 +575,7 @@ export function apiDelete<T>(endpoint: string, customFetch = fetch, options?: Re
 # src/lib/api/post.ts
 
 ```ts
-// PATCH for $lib/api/post.ts
-// Two fixes:
-//
-// 1. getPosts — search param was being appended with key 'limit' instead of 'search':
-//
-//   WRONG:  queryParams.append('limit', params.search);
-//   RIGHT:  queryParams.append('search', params.search);
-//
-// 2. getPostsByAuthor — wrong return type (PostsResult) and wrong signature.
-//    The server returns { user, posts } not { posts, pagination }.
-//    Update the function to:
+// $lib/api/post.ts
 
 import { apiDelete, apiGet, apiPost, apiPut } from '$lib/api/client';
 import type { PostDetailResult, PostsResult, PostWithAuthor, UserResult } from '$lib/types/data';
@@ -552,6 +584,7 @@ interface PaginationParams {
 	page?: number;
 	limit?: number;
 	search?: string;
+	sort?: 'latest' | 'likes' | 'comments';
 }
 
 export async function getPosts(
@@ -562,7 +595,8 @@ export async function getPosts(
 
 	if (params.page) queryParams.append('page', params.page.toString());
 	if (params.limit) queryParams.append('limit', params.limit.toString());
-	if (params.search) queryParams.append('search', params.search); // fixed: was 'limit'
+	if (params.search) queryParams.append('search', params.search);
+	if (params.sort) queryParams.append('sort', params.sort);
 
 	const query = queryParams.toString();
 	const endpoint = query ? `/api/posts?${query}` : '/api/posts';
@@ -666,7 +700,6 @@ export function deleteComment(postId: number, commentId: number, customFetch = f
 		<Field.FieldError id="{name}-error">{errors[0]}</Field.FieldError>
 	{/if}
 </Field.Field>
-
 ```
 
 # src/lib/components/Avatar.svelte
@@ -689,7 +722,6 @@ export function deleteComment(postId: number, commentId: number, customFetch = f
 	</span>
 	<span class="sr-only">User avatar - {username[0]}</span>
 </div>
-
 ```
 
 # src/lib/components/LoadingSpinner.svelte
@@ -704,14 +736,13 @@ export function deleteComment(postId: number, commentId: number, customFetch = f
 
 {#if navigating.to}
 	<div
-		class="bg-background/80 fixed inset-x-0 top-16 bottom-0 z-40 flex flex-col items-center justify-center gap-2 backdrop-blur-sm"
+		class="fixed inset-x-0 top-16 bottom-0 z-40 flex flex-col items-center justify-center gap-2 bg-background/80 backdrop-blur-sm"
 		transition:fade={{ duration: 150 }}
 	>
-		<LoaderCircle strokeWidth={1.25} class="text-primary h-8 w-8 animate-spin" />
+		<LoaderCircle strokeWidth={1.25} class="h-8 w-8 animate-spin text-primary" />
 		Loading...
 	</div>
 {/if}
-
 ```
 
 # src/lib/components/Pagination.svelte
@@ -768,7 +799,6 @@ export function deleteComment(postId: number, commentId: number, customFetch = f
 		</Pagination.Content>
 	{/snippet}
 </Pagination.Root>
-
 ```
 
 # src/lib/components/ui/button/button.svelte
@@ -863,7 +893,6 @@ export function deleteComment(postId: number, commentId: number, customFetch = f
 		{@render children?.()}
 	</button>
 {/if}
-
 ```
 
 # src/lib/components/ui/button/index.ts
@@ -893,8 +922,8 @@ export {
 
 ```svelte
 <script lang="ts">
-	import { cn, type WithElementRef } from "$lib/utils/shadcn.js";
-	import type { HTMLAttributes } from "svelte/elements";
+	import { cn, type WithElementRef } from '$lib/utils/shadcn.js';
+	import type { HTMLAttributes } from 'svelte/elements';
 
 	let {
 		ref = $bindable(null),
@@ -908,22 +937,21 @@ export {
 	bind:this={ref}
 	data-slot="card-action"
 	class={cn(
-		"cn-card-action col-start-2 row-span-2 row-start-1 self-start justify-self-end",
+		'cn-card-action col-start-2 row-span-2 row-start-1 self-start justify-self-end',
 		className
 	)}
 	{...restProps}
 >
 	{@render children?.()}
 </div>
-
 ```
 
 # src/lib/components/ui/card/card-content.svelte
 
 ```svelte
 <script lang="ts">
-	import type { HTMLAttributes } from "svelte/elements";
-	import { cn, type WithElementRef } from "$lib/utils/shadcn.js";
+	import type { HTMLAttributes } from 'svelte/elements';
+	import { cn, type WithElementRef } from '$lib/utils/shadcn.js';
 
 	let {
 		ref = $bindable(null),
@@ -936,20 +964,19 @@ export {
 <div
 	bind:this={ref}
 	data-slot="card-content"
-	class={cn("px-4 group-data-[size=sm]/card:px-3", className)}
+	class={cn('px-4 group-data-[size=sm]/card:px-3', className)}
 	{...restProps}
 >
 	{@render children?.()}
 </div>
-
 ```
 
 # src/lib/components/ui/card/card-description.svelte
 
 ```svelte
 <script lang="ts">
-	import type { HTMLAttributes } from "svelte/elements";
-	import { cn, type WithElementRef } from "$lib/utils/shadcn.js";
+	import type { HTMLAttributes } from 'svelte/elements';
+	import { cn, type WithElementRef } from '$lib/utils/shadcn.js';
 
 	let {
 		ref = $bindable(null),
@@ -962,20 +989,19 @@ export {
 <p
 	bind:this={ref}
 	data-slot="card-description"
-	class={cn("text-muted-foreground text-sm", className)}
+	class={cn('text-sm text-muted-foreground', className)}
 	{...restProps}
 >
 	{@render children?.()}
 </p>
-
 ```
 
 # src/lib/components/ui/card/card-footer.svelte
 
 ```svelte
 <script lang="ts">
-	import { cn, type WithElementRef } from "$lib/utils/shadcn.js";
-	import type { HTMLAttributes } from "svelte/elements";
+	import { cn, type WithElementRef } from '$lib/utils/shadcn.js';
+	import type { HTMLAttributes } from 'svelte/elements';
 
 	let {
 		ref = $bindable(null),
@@ -988,20 +1014,22 @@ export {
 <div
 	bind:this={ref}
 	data-slot="card-footer"
-	class={cn("bg-muted/50 rounded-b-xl border-t p-4 group-data-[size=sm]/card:p-3 flex items-center", className)}
+	class={cn(
+		'flex items-center rounded-b-xl border-t bg-muted/50 p-4 group-data-[size=sm]/card:p-3',
+		className
+	)}
 	{...restProps}
 >
 	{@render children?.()}
 </div>
-
 ```
 
 # src/lib/components/ui/card/card-header.svelte
 
 ```svelte
 <script lang="ts">
-	import { cn, type WithElementRef } from "$lib/utils/shadcn.js";
-	import type { HTMLAttributes } from "svelte/elements";
+	import { cn, type WithElementRef } from '$lib/utils/shadcn.js';
+	import type { HTMLAttributes } from 'svelte/elements';
 
 	let {
 		ref = $bindable(null),
@@ -1015,22 +1043,21 @@ export {
 	bind:this={ref}
 	data-slot="card-header"
 	class={cn(
-		"gap-1 rounded-t-xl px-4 group-data-[size=sm]/card:px-3 [.border-b]:pb-4 group-data-[size=sm]/card:[.border-b]:pb-3 group/card-header @container/card-header grid auto-rows-min items-start has-data-[slot=card-action]:grid-cols-[1fr_auto] has-data-[slot=card-description]:grid-rows-[auto_auto]",
+		'group/card-header @container/card-header grid auto-rows-min items-start gap-1 rounded-t-xl px-4 group-data-[size=sm]/card:px-3 has-data-[slot=card-action]:grid-cols-[1fr_auto] has-data-[slot=card-description]:grid-rows-[auto_auto] [.border-b]:pb-4 group-data-[size=sm]/card:[.border-b]:pb-3',
 		className
 	)}
 	{...restProps}
 >
 	{@render children?.()}
 </div>
-
 ```
 
 # src/lib/components/ui/card/card-title.svelte
 
 ```svelte
 <script lang="ts">
-	import type { HTMLAttributes } from "svelte/elements";
-	import { cn, type WithElementRef } from "$lib/utils/shadcn.js";
+	import type { HTMLAttributes } from 'svelte/elements';
+	import { cn, type WithElementRef } from '$lib/utils/shadcn.js';
 
 	let {
 		ref = $bindable(null),
@@ -1043,40 +1070,41 @@ export {
 <div
 	bind:this={ref}
 	data-slot="card-title"
-	class={cn("text-base leading-snug font-medium group-data-[size=sm]/card:text-sm", className)}
+	class={cn('text-base leading-snug font-medium group-data-[size=sm]/card:text-sm', className)}
 	{...restProps}
 >
 	{@render children?.()}
 </div>
-
 ```
 
 # src/lib/components/ui/card/card.svelte
 
 ```svelte
 <script lang="ts">
-	import type { HTMLAttributes } from "svelte/elements";
-	import { cn, type WithElementRef } from "$lib/utils/shadcn.js";
+	import type { HTMLAttributes } from 'svelte/elements';
+	import { cn, type WithElementRef } from '$lib/utils/shadcn.js';
 
 	let {
 		ref = $bindable(null),
 		class: className,
 		children,
-		size = "default",
+		size = 'default',
 		...restProps
-	}: WithElementRef<HTMLAttributes<HTMLDivElement>> & { size?: "default" | "sm" } = $props();
+	}: WithElementRef<HTMLAttributes<HTMLDivElement>> & { size?: 'default' | 'sm' } = $props();
 </script>
 
 <div
 	bind:this={ref}
 	data-slot="card"
 	data-size={size}
-	class={cn("ring-foreground/10 bg-card text-card-foreground gap-4 overflow-hidden rounded-xl py-4 text-sm ring-1 has-data-[slot=card-footer]:pb-0 has-[>img:first-child]:pt-0 data-[size=sm]:gap-3 data-[size=sm]:py-3 data-[size=sm]:has-data-[slot=card-footer]:pb-0 *:[img:first-child]:rounded-t-xl *:[img:last-child]:rounded-b-xl group/card flex flex-col", className)}
+	class={cn(
+		'group/card flex flex-col gap-4 overflow-hidden rounded-xl bg-card py-4 text-sm text-card-foreground ring-1 ring-foreground/10 has-data-[slot=card-footer]:pb-0 has-[>img:first-child]:pt-0 data-[size=sm]:gap-3 data-[size=sm]:py-3 data-[size=sm]:has-data-[slot=card-footer]:pb-0 *:[img:first-child]:rounded-t-xl *:[img:last-child]:rounded-b-xl',
+		className
+	)}
 	{...restProps}
 >
 	{@render children?.()}
 </div>
-
 ```
 
 # src/lib/components/ui/card/index.ts
@@ -1114,7 +1142,7 @@ export {
 
 ```svelte
 <script lang="ts">
-	import { DropdownMenu as DropdownMenuPrimitive } from "bits-ui";
+	import { DropdownMenu as DropdownMenuPrimitive } from 'bits-ui';
 
 	let {
 		ref = $bindable(null),
@@ -1129,7 +1157,6 @@ export {
 	data-slot="dropdown-menu-checkbox-group"
 	{...restProps}
 />
-
 ```
 
 # src/lib/components/ui/dropdown-menu/dropdown-menu-checkbox-item.svelte
@@ -1160,7 +1187,7 @@ export {
 	bind:indeterminate
 	data-slot="dropdown-menu-checkbox-item"
 	class={cn(
-		"focus:bg-accent focus:text-accent-foreground focus:**:text-accent-foreground relative flex cursor-default items-center gap-2 rounded-sm py-1.5 pr-8 pl-2 text-sm outline-hidden select-none data-inset:pl-8 data-[disabled]:pointer-events-none data-[disabled]:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+		"relative flex cursor-default items-center gap-2 rounded-sm py-1.5 pr-8 pl-2 text-sm outline-hidden select-none focus:bg-accent focus:text-accent-foreground focus:**:text-accent-foreground data-inset:pl-8 data-[disabled]:pointer-events-none data-[disabled]:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
 		className
 	)}
 	{...restProps}
@@ -1179,7 +1206,6 @@ export {
 		{@render childrenProp?.()}
 	{/snippet}
 </DropdownMenuPrimitive.CheckboxItem>
-
 ```
 
 # src/lib/components/ui/dropdown-menu/dropdown-menu-content.svelte
@@ -1210,13 +1236,12 @@ export {
 		{sideOffset}
 		{align}
 		class={cn(
-			'data-open:animate-in data-closed:animate-out data-closed:fade-out-0 data-open:fade-in-0 data-closed:zoom-out-95 data-open:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 ring-foreground/10 bg-popover text-popover-foreground data-[side=inline-start]:slide-in-from-right-2 data-[side=inline-end]:slide-in-from-left-2 z-50 w-(--bits-dropdown-menu-anchor-width) min-w-32 overflow-x-hidden overflow-y-auto rounded-md p-1 shadow-md ring-1 duration-100 outline-none data-closed:overflow-hidden',
+			'z-50 w-(--bits-dropdown-menu-anchor-width) min-w-32 overflow-x-hidden overflow-y-auto rounded-md bg-popover p-1 text-popover-foreground shadow-md ring-1 ring-foreground/10 duration-100 outline-none data-closed:animate-out data-closed:overflow-hidden data-closed:fade-out-0 data-closed:zoom-out-95 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=inline-end]:slide-in-from-left-2 data-[side=inline-start]:slide-in-from-right-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2',
 			className
 		)}
 		{...restProps}
 	/>
 </DropdownMenuPortal>
-
 ```
 
 # src/lib/components/ui/dropdown-menu/dropdown-menu-group-heading.svelte
@@ -1244,20 +1269,18 @@ export {
 	class={cn('px-2 py-1.5 text-sm font-semibold data-[inset]:ps-8', className)}
 	{...restProps}
 />
-
 ```
 
 # src/lib/components/ui/dropdown-menu/dropdown-menu-group.svelte
 
 ```svelte
 <script lang="ts">
-	import { DropdownMenu as DropdownMenuPrimitive } from "bits-ui";
+	import { DropdownMenu as DropdownMenuPrimitive } from 'bits-ui';
 
 	let { ref = $bindable(null), ...restProps }: DropdownMenuPrimitive.GroupProps = $props();
 </script>
 
 <DropdownMenuPrimitive.Group bind:ref data-slot="dropdown-menu-group" {...restProps} />
-
 ```
 
 # src/lib/components/ui/dropdown-menu/dropdown-menu-item.svelte
@@ -1285,12 +1308,11 @@ export {
 	data-inset={inset}
 	data-variant={variant}
 	class={cn(
-		"focus:bg-accent focus:text-accent-foreground data-[variant=destructive]:text-destructive data-[variant=destructive]:focus:bg-destructive/10 dark:data-[variant=destructive]:focus:bg-destructive/20 data-[variant=destructive]:focus:text-destructive data-[variant=destructive]:*:[svg]:text-destructive not-data-[variant=destructive]:focus:**:text-accent-foreground group/dropdown-menu-item relative flex cursor-default items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-hidden select-none data-disabled:pointer-events-none data-disabled:opacity-50 data-inset:pl-8 data-[inset]:pl-8 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+		"group/dropdown-menu-item relative flex cursor-default items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-hidden select-none focus:bg-accent focus:text-accent-foreground not-data-[variant=destructive]:focus:**:text-accent-foreground data-disabled:pointer-events-none data-disabled:opacity-50 data-inset:pl-8 data-[inset]:pl-8 data-[variant=destructive]:text-destructive data-[variant=destructive]:focus:bg-destructive/10 data-[variant=destructive]:focus:text-destructive dark:data-[variant=destructive]:focus:bg-destructive/20 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 data-[variant=destructive]:*:[svg]:text-destructive",
 		className
 	)}
 	{...restProps}
 />
-
 ```
 
 # src/lib/components/ui/dropdown-menu/dropdown-menu-label.svelte
@@ -1316,34 +1338,32 @@ export {
 	data-slot="dropdown-menu-label"
 	data-inset={inset}
 	class={cn(
-		'text-muted-foreground px-2 py-1.5 text-xs font-medium data-inset:pl-8 data-[inset]:pl-8',
+		'px-2 py-1.5 text-xs font-medium text-muted-foreground data-inset:pl-8 data-[inset]:pl-8',
 		className
 	)}
 	{...restProps}
 >
 	{@render children?.()}
 </div>
-
 ```
 
 # src/lib/components/ui/dropdown-menu/dropdown-menu-portal.svelte
 
 ```svelte
 <script lang="ts">
-	import { DropdownMenu as DropdownMenuPrimitive } from "bits-ui";
+	import { DropdownMenu as DropdownMenuPrimitive } from 'bits-ui';
 
 	let { ...restProps }: DropdownMenuPrimitive.PortalProps = $props();
 </script>
 
 <DropdownMenuPrimitive.Portal {...restProps} />
-
 ```
 
 # src/lib/components/ui/dropdown-menu/dropdown-menu-radio-group.svelte
 
 ```svelte
 <script lang="ts">
-	import { DropdownMenu as DropdownMenuPrimitive } from "bits-ui";
+	import { DropdownMenu as DropdownMenuPrimitive } from 'bits-ui';
 
 	let {
 		ref = $bindable(null),
@@ -1358,7 +1378,6 @@ export {
 	data-slot="dropdown-menu-radio-group"
 	{...restProps}
 />
-
 ```
 
 # src/lib/components/ui/dropdown-menu/dropdown-menu-radio-item.svelte
@@ -1381,7 +1400,7 @@ export {
 	bind:ref
 	data-slot="dropdown-menu-radio-item"
 	class={cn(
-		"focus:bg-accent focus:text-accent-foreground focus:**:text-accent-foreground relative flex cursor-default items-center gap-2 rounded-sm py-1.5 pr-8 pl-2 text-sm outline-hidden select-none data-inset:pl-8 data-[disabled]:pointer-events-none data-[disabled]:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+		"relative flex cursor-default items-center gap-2 rounded-sm py-1.5 pr-8 pl-2 text-sm outline-hidden select-none focus:bg-accent focus:text-accent-foreground focus:**:text-accent-foreground data-inset:pl-8 data-[disabled]:pointer-events-none data-[disabled]:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
 		className
 	)}
 	{...restProps}
@@ -1398,7 +1417,6 @@ export {
 		{@render childrenProp?.({ checked })}
 	{/snippet}
 </DropdownMenuPrimitive.RadioItem>
-
 ```
 
 # src/lib/components/ui/dropdown-menu/dropdown-menu-separator.svelte
@@ -1418,10 +1436,9 @@ export {
 <DropdownMenuPrimitive.Separator
 	bind:ref
 	data-slot="dropdown-menu-separator"
-	class={cn('bg-border -mx-1 my-1 h-px', className)}
+	class={cn('-mx-1 my-1 h-px bg-border', className)}
 	{...restProps}
 />
-
 ```
 
 # src/lib/components/ui/dropdown-menu/dropdown-menu-shortcut.svelte
@@ -1443,14 +1460,13 @@ export {
 	bind:this={ref}
 	data-slot="dropdown-menu-shortcut"
 	class={cn(
-		'text-muted-foreground group-focus/dropdown-menu-item:text-accent-foreground ml-auto text-xs tracking-widest',
+		'ml-auto text-xs tracking-widest text-muted-foreground group-focus/dropdown-menu-item:text-accent-foreground',
 		className
 	)}
 	{...restProps}
 >
 	{@render children?.()}
 </span>
-
 ```
 
 # src/lib/components/ui/dropdown-menu/dropdown-menu-sub-content.svelte
@@ -1471,12 +1487,11 @@ export {
 	bind:ref
 	data-slot="dropdown-menu-sub-content"
 	class={cn(
-		'data-open:animate-in data-closed:animate-out data-closed:fade-out-0 data-open:fade-in-0 data-closed:zoom-out-95 data-open:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 ring-foreground/10 bg-popover text-popover-foreground w-auto min-w-[96px] rounded-md p-1 shadow-lg ring-1 duration-100',
+		'w-auto min-w-[96px] rounded-md bg-popover p-1 text-popover-foreground shadow-lg ring-1 ring-foreground/10 duration-100 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2',
 		className
 	)}
 	{...restProps}
 />
-
 ```
 
 # src/lib/components/ui/dropdown-menu/dropdown-menu-sub-trigger.svelte
@@ -1503,7 +1518,7 @@ export {
 	data-slot="dropdown-menu-sub-trigger"
 	data-inset={inset}
 	class={cn(
-		"focus:bg-accent focus:text-accent-foreground data-open:bg-accent data-open:text-accent-foreground not-data-[variant=destructive]:focus:**:text-accent-foreground flex cursor-default items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-hidden select-none data-inset:pl-8 data-[inset]:pl-8 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+		"flex cursor-default items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-hidden select-none focus:bg-accent focus:text-accent-foreground not-data-[variant=destructive]:focus:**:text-accent-foreground data-inset:pl-8 data-open:bg-accent data-open:text-accent-foreground data-[inset]:pl-8 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
 		className
 	)}
 	{...restProps}
@@ -1511,46 +1526,42 @@ export {
 	{@render children?.()}
 	<ChevronRightIcon class="ml-auto" />
 </DropdownMenuPrimitive.SubTrigger>
-
 ```
 
 # src/lib/components/ui/dropdown-menu/dropdown-menu-sub.svelte
 
 ```svelte
 <script lang="ts">
-	import { DropdownMenu as DropdownMenuPrimitive } from "bits-ui";
+	import { DropdownMenu as DropdownMenuPrimitive } from 'bits-ui';
 
 	let { open = $bindable(false), ...restProps }: DropdownMenuPrimitive.SubProps = $props();
 </script>
 
 <DropdownMenuPrimitive.Sub bind:open {...restProps} />
-
 ```
 
 # src/lib/components/ui/dropdown-menu/dropdown-menu-trigger.svelte
 
 ```svelte
 <script lang="ts">
-	import { DropdownMenu as DropdownMenuPrimitive } from "bits-ui";
+	import { DropdownMenu as DropdownMenuPrimitive } from 'bits-ui';
 
 	let { ref = $bindable(null), ...restProps }: DropdownMenuPrimitive.TriggerProps = $props();
 </script>
 
 <DropdownMenuPrimitive.Trigger bind:ref data-slot="dropdown-menu-trigger" {...restProps} />
-
 ```
 
 # src/lib/components/ui/dropdown-menu/dropdown-menu.svelte
 
 ```svelte
 <script lang="ts">
-	import { DropdownMenu as DropdownMenuPrimitive } from "bits-ui";
+	import { DropdownMenu as DropdownMenuPrimitive } from 'bits-ui';
 
 	let { open = $bindable(false), ...restProps }: DropdownMenuPrimitive.RootProps = $props();
 </script>
 
 <DropdownMenuPrimitive.Root bind:open {...restProps} />
-
 ```
 
 # src/lib/components/ui/dropdown-menu/index.ts
@@ -1636,7 +1647,6 @@ export {
 >
 	{@render children?.()}
 </div>
-
 ```
 
 # src/lib/components/ui/field/field-description.svelte
@@ -1658,16 +1668,15 @@ export {
 	bind:this={ref}
 	data-slot="field-description"
 	class={cn(
-		'text-muted-foreground text-left text-sm leading-normal font-normal group-has-[[data-orientation=horizontal]]/field:text-balance [[data-variant=legend]+&]:-mt-1.5',
+		'text-left text-sm leading-normal font-normal text-muted-foreground group-has-[[data-orientation=horizontal]]/field:text-balance [[data-variant=legend]+&]:-mt-1.5',
 		'last:mt-0 nth-last-2:-mt-1',
-		'[&>a:hover]:text-primary [&>a]:underline [&>a]:underline-offset-4',
+		'[&>a]:underline [&>a]:underline-offset-4 [&>a:hover]:text-primary',
 		className
 	)}
 	{...restProps}
 >
 	{@render children?.()}
 </p>
-
 ```
 
 # src/lib/components/ui/field/field-error.svelte
@@ -1713,7 +1722,7 @@ export {
 		bind:this={ref}
 		role="alert"
 		data-slot="field-error"
-		class={cn('text-destructive text-sm font-normal', className)}
+		class={cn('text-sm font-normal text-destructive', className)}
 		{...restProps}
 	>
 		{#if children}
@@ -1731,7 +1740,6 @@ export {
 		{/if}
 	</div>
 {/if}
-
 ```
 
 # src/lib/components/ui/field/field-group.svelte
@@ -1760,7 +1768,6 @@ export {
 >
 	{@render children?.()}
 </div>
-
 ```
 
 # src/lib/components/ui/field/field-label.svelte
@@ -1783,7 +1790,7 @@ export {
 	bind:ref
 	data-slot="field-label"
 	class={cn(
-		'has-data-checked:bg-primary/5 has-data-checked:border-primary/30 dark:has-data-checked:border-primary/20 dark:has-data-checked:bg-primary/10 group/field-label peer/field-label flex w-fit gap-2 leading-snug leading-snug group-data-[disabled=true]/field:opacity-50 has-[>[data-slot=field]]:rounded-md has-[>[data-slot=field]]:border *:data-[slot=field]:p-3',
+		'group/field-label peer/field-label flex w-fit gap-2 leading-snug leading-snug group-data-[disabled=true]/field:opacity-50 has-data-checked:border-primary/30 has-data-checked:bg-primary/5 has-[>[data-slot=field]]:rounded-md has-[>[data-slot=field]]:border *:data-[slot=field]:p-3 dark:has-data-checked:border-primary/20 dark:has-data-checked:bg-primary/10',
 		'has-[>[data-slot=field]]:w-full has-[>[data-slot=field]]:flex-col',
 		className
 	)}
@@ -1791,7 +1798,6 @@ export {
 >
 	{@render children?.()}
 </Label>
-
 ```
 
 # src/lib/components/ui/field/field-legend.svelte
@@ -1824,7 +1830,6 @@ export {
 >
 	{@render children?.()}
 </legend>
-
 ```
 
 # src/lib/components/ui/field/field-separator.svelte
@@ -1858,14 +1863,13 @@ export {
 	<Separator class="absolute inset-0 top-1/2" />
 	{#if children}
 		<span
-			class="text-muted-foreground bg-background relative mx-auto block w-fit px-2"
+			class="relative mx-auto block w-fit bg-background px-2 text-muted-foreground"
 			data-slot="field-separator-content"
 		>
 			{@render children()}
 		</span>
 	{/if}
 </div>
-
 ```
 
 # src/lib/components/ui/field/field-set.svelte
@@ -1894,7 +1898,6 @@ export {
 >
 	{@render children?.()}
 </fieldset>
-
 ```
 
 # src/lib/components/ui/field/field-title.svelte
@@ -1923,7 +1926,6 @@ export {
 >
 	{@render children?.()}
 </div>
-
 ```
 
 # src/lib/components/ui/field/field.svelte
@@ -1976,7 +1978,6 @@ export {
 >
 	{@render children?.()}
 </div>
-
 ```
 
 # src/lib/components/ui/field/index.ts
@@ -2061,7 +2062,7 @@ export {
 		bind:this={ref}
 		data-slot={dataSlot}
 		class={cn(
-			'dark:bg-input/30 border-input focus-visible:border-ring focus-visible:ring-ring/50 aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive dark:aria-invalid:border-destructive/50 file:text-foreground placeholder:text-muted-foreground h-9 w-full min-w-0 rounded-md border bg-transparent px-2.5 py-1 text-base shadow-xs transition-[color,box-shadow] outline-none file:inline-flex file:h-7 file:border-0 file:bg-transparent file:text-sm file:font-medium focus-visible:ring-3 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:ring-3 md:text-sm',
+			'h-9 w-full min-w-0 rounded-md border border-input bg-transparent px-2.5 py-1 text-base shadow-xs transition-[color,box-shadow] outline-none file:inline-flex file:h-7 file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 md:text-sm dark:bg-input/30 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40',
 			className
 		)}
 		type="file"
@@ -2074,7 +2075,7 @@ export {
 		bind:this={ref}
 		data-slot={dataSlot}
 		class={cn(
-			'dark:bg-input/30 border-input focus-visible:border-ring focus-visible:ring-ring/50 aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive dark:aria-invalid:border-destructive/50 file:text-foreground placeholder:text-muted-foreground h-9 w-full min-w-0 rounded-md border bg-transparent px-2.5 py-1 text-base shadow-xs transition-[color,box-shadow] outline-none file:inline-flex file:h-7 file:border-0 file:bg-transparent file:text-sm file:font-medium focus-visible:ring-3 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:ring-3 md:text-sm',
+			'h-9 w-full min-w-0 rounded-md border border-input bg-transparent px-2.5 py-1 text-base shadow-xs transition-[color,box-shadow] outline-none file:inline-flex file:h-7 file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 md:text-sm dark:bg-input/30 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40',
 			className
 		)}
 		{type}
@@ -2082,7 +2083,6 @@ export {
 		{...restProps}
 	/>
 {/if}
-
 ```
 
 # src/lib/components/ui/label/index.ts
@@ -2121,7 +2121,6 @@ export {
 	)}
 	{...restProps}
 />
-
 ```
 
 # src/lib/components/ui/pagination/index.ts
@@ -2165,8 +2164,8 @@ export {
 
 ```svelte
 <script lang="ts">
-	import type { HTMLAttributes } from "svelte/elements";
-	import { cn, type WithElementRef } from "$lib/utils/shadcn.js";
+	import type { HTMLAttributes } from 'svelte/elements';
+	import { cn, type WithElementRef } from '$lib/utils/shadcn.js';
 
 	let {
 		ref = $bindable(null),
@@ -2179,20 +2178,19 @@ export {
 <ul
 	bind:this={ref}
 	data-slot="pagination-content"
-	class={cn("gap-0.5 flex items-center", className)}
+	class={cn('flex items-center gap-0.5', className)}
 	{...restProps}
 >
 	{@render children?.()}
 </ul>
-
 ```
 
 # src/lib/components/ui/pagination/pagination-ellipsis.svelte
 
 ```svelte
 <script lang="ts">
-	import type { HTMLAttributes } from "svelte/elements";
-	import { cn, type WithElementRef, type WithoutChildren } from "$lib/utils/shadcn.js";
+	import type { HTMLAttributes } from 'svelte/elements';
+	import { cn, type WithElementRef, type WithoutChildren } from '$lib/utils/shadcn.js';
 	import MoreHorizontalIcon from '@lucide/svelte/icons/more-horizontal';
 
 	let {
@@ -2206,21 +2204,23 @@ export {
 	bind:this={ref}
 	aria-hidden="true"
 	data-slot="pagination-ellipsis"
-	class={cn("size-8 items-center justify-center [&_svg:not([class*='size-'])]:size-4 flex items-center justify-center", className)}
+	class={cn(
+		"flex size-8 items-center items-center justify-center justify-center [&_svg:not([class*='size-'])]:size-4",
+		className
+	)}
 	{...restProps}
 >
-	<MoreHorizontalIcon  />
+	<MoreHorizontalIcon />
 	<span class="sr-only">More pages</span>
 </span>
-
 ```
 
 # src/lib/components/ui/pagination/pagination-item.svelte
 
 ```svelte
 <script lang="ts">
-	import type { HTMLLiAttributes } from "svelte/elements";
-	import type { WithElementRef } from "$lib/utils/shadcn.js";
+	import type { HTMLLiAttributes } from 'svelte/elements';
+	import type { WithElementRef } from '$lib/utils/shadcn.js';
 
 	let {
 		ref = $bindable(null),
@@ -2232,20 +2232,19 @@ export {
 <li bind:this={ref} data-slot="pagination-item" {...restProps}>
 	{@render children?.()}
 </li>
-
 ```
 
 # src/lib/components/ui/pagination/pagination-link.svelte
 
 ```svelte
 <script lang="ts">
-	import { Pagination as PaginationPrimitive } from "bits-ui";
-	import { cn } from "$lib/utils/shadcn.js";
-	import { buttonVariants, type ButtonSize } from "$lib/components/ui/button/index.js";
+	import { Pagination as PaginationPrimitive } from 'bits-ui';
+	import { cn } from '$lib/utils/shadcn.js';
+	import { buttonVariants, type ButtonSize } from '$lib/components/ui/button/index.js';
 	let {
 		ref = $bindable(null),
 		class: className,
-		size = "icon",
+		size = 'icon',
 		isActive,
 		page,
 		children,
@@ -2263,13 +2262,13 @@ export {
 <PaginationPrimitive.Page
 	bind:ref
 	{page}
-	aria-current={isActive ? "page" : undefined}
+	aria-current={isActive ? 'page' : undefined}
 	data-slot="pagination-link"
 	data-active={isActive}
 	data-size={size}
 	class={cn(
-		buttonVariants({ size, variant: isActive ? "outline" : "ghost" }),
-		"cn-pagination-link",
+		buttonVariants({ size, variant: isActive ? 'outline' : 'ghost' }),
+		'cn-pagination-link',
 		className
 	)}
 	{...restProps}
@@ -2280,17 +2279,16 @@ export {
 		{@render Fallback()}
 	{/if}
 </PaginationPrimitive.Page>
-
 ```
 
 # src/lib/components/ui/pagination/pagination-next-button.svelte
 
 ```svelte
 <script lang="ts">
-	import { Pagination as PaginationPrimitive } from "bits-ui";
+	import { Pagination as PaginationPrimitive } from 'bits-ui';
 	import ChevronRightIcon from '@lucide/svelte/icons/chevron-right';
-	import { cn } from "$lib/utils/shadcn.js";
-	import { buttonVariants } from "../button/index.js";
+	import { cn } from '$lib/utils/shadcn.js';
+	import { buttonVariants } from '../button/index.js';
 
 	let {
 		ref = $bindable(null),
@@ -2302,13 +2300,13 @@ export {
 
 {#snippet Fallback()}
 	<span>Next</span>
-	<ChevronRightIcon class={cn("size-4", className)} />
+	<ChevronRightIcon class={cn('size-4', className)} />
 {/snippet}
 
 <PaginationPrimitive.NextButton
 	bind:ref
 	aria-label="Go to next page"
-	class={cn(buttonVariants({ variant: "ghost" }), "pr-1.5!", className)}
+	class={cn(buttonVariants({ variant: 'ghost' }), 'pr-1.5!', className)}
 	{...restProps}
 >
 	{#if children}
@@ -2317,16 +2315,15 @@ export {
 		{@render Fallback()}
 	{/if}
 </PaginationPrimitive.NextButton>
-
 ```
 
 # src/lib/components/ui/pagination/pagination-next.svelte
 
 ```svelte
 <script lang="ts">
-	import type { ComponentProps } from "svelte";
-	import { cn } from "$lib/utils/shadcn.js";
-	import { PaginationLink } from "./index.js";
+	import type { ComponentProps } from 'svelte';
+	import { cn } from '$lib/utils/shadcn.js';
+	import { PaginationLink } from './index.js';
 	import ChevronRightIcon from '@lucide/svelte/icons/chevron-right';
 
 	type PaginationNextProps = ComponentProps<typeof PaginationLink>;
@@ -2337,23 +2334,22 @@ export {
 <PaginationLink
 	aria-label="Go to next page"
 	size="default"
-	class={cn("pr-1.5!", className)}
+	class={cn('pr-1.5!', className)}
 	{...restProps}
 >
 	<span class="cn-pagination-next-text hidden sm:block">Next</span>
 	<ChevronRightIcon data-icon="inline-end" />
 </PaginationLink>
-
 ```
 
 # src/lib/components/ui/pagination/pagination-prev-button.svelte
 
 ```svelte
 <script lang="ts">
-	import { Pagination as PaginationPrimitive } from "bits-ui";
+	import { Pagination as PaginationPrimitive } from 'bits-ui';
 	import ChevronLeftIcon from '@lucide/svelte/icons/chevron-left';
-	import { cn } from "$lib/utils/shadcn.js";
-	import { buttonVariants } from "../button/index.js";
+	import { cn } from '$lib/utils/shadcn.js';
+	import { buttonVariants } from '../button/index.js';
 
 	let {
 		ref = $bindable(null),
@@ -2364,14 +2360,14 @@ export {
 </script>
 
 {#snippet Fallback()}
-	<ChevronLeftIcon class={cn("size-4", className)} />
+	<ChevronLeftIcon class={cn('size-4', className)} />
 	<span>Previous</span>
 {/snippet}
 
 <PaginationPrimitive.PrevButton
 	bind:ref
 	aria-label="Go to previous page"
-	class={cn(buttonVariants({ variant: "ghost" }), "pl-1.5!", className)}
+	class={cn(buttonVariants({ variant: 'ghost' }), 'pl-1.5!', className)}
 	{...restProps}
 >
 	{#if children}
@@ -2380,16 +2376,15 @@ export {
 		{@render Fallback()}
 	{/if}
 </PaginationPrimitive.PrevButton>
-
 ```
 
 # src/lib/components/ui/pagination/pagination-previous.svelte
 
 ```svelte
 <script lang="ts">
-	import type { ComponentProps } from "svelte";
-	import { cn } from "$lib/utils/shadcn.js";
-	import { PaginationLink } from "./index.js";
+	import type { ComponentProps } from 'svelte';
+	import { cn } from '$lib/utils/shadcn.js';
+	import { PaginationLink } from './index.js';
 	import ChevronLeftIcon from '@lucide/svelte/icons/chevron-left';
 
 	type PaginationPreviousProps = ComponentProps<typeof PaginationLink>;
@@ -2400,22 +2395,21 @@ export {
 <PaginationLink
 	aria-label="Go to previous page"
 	size="default"
-	class={cn("pl-1.5!", className)}
+	class={cn('pl-1.5!', className)}
 	{...restProps}
 >
 	<ChevronLeftIcon data-icon="inline-start" />
 	<span class="cn-pagination-previous-text hidden sm:block">Previous</span>
 </PaginationLink>
-
 ```
 
 # src/lib/components/ui/pagination/pagination.svelte
 
 ```svelte
 <script lang="ts">
-	import { Pagination as PaginationPrimitive } from "bits-ui";
+	import { Pagination as PaginationPrimitive } from 'bits-ui';
 
-	import { cn } from "$lib/utils/shadcn.js";
+	import { cn } from '$lib/utils/shadcn.js';
 
 	let {
 		ref = $bindable(null),
@@ -2437,10 +2431,9 @@ export {
 	{count}
 	{perPage}
 	{siblingCount}
-	class={cn("cn-pagination mx-auto flex w-full justify-center", className)}
+	class={cn('cn-pagination mx-auto flex w-full justify-center', className)}
 	{...restProps}
 />
-
 ```
 
 # src/lib/components/ui/separator/index.ts
@@ -2475,14 +2468,13 @@ export {
 	bind:ref
 	data-slot={dataSlot}
 	class={cn(
-		'bg-border shrink-0 data-[orientation=horizontal]:h-px data-[orientation=horizontal]:w-full data-[orientation=vertical]:w-px',
+		'shrink-0 bg-border data-[orientation=horizontal]:h-px data-[orientation=horizontal]:w-full data-[orientation=vertical]:w-px',
 		// this is different in shadcn/ui but self-stretch breaks things for us
 		'data-[orientation=vertical]:h-full',
 		className
 	)}
 	{...restProps}
 />
-
 ```
 
 # src/lib/components/ui/sonner/index.ts
@@ -2496,8 +2488,8 @@ export { default as Toaster } from "./sonner.svelte";
 
 ```svelte
 <script lang="ts">
-	import { Toaster as Sonner, type ToasterProps as SonnerProps } from "svelte-sonner";
-	import { mode } from "mode-watcher";
+	import { Toaster as Sonner, type ToasterProps as SonnerProps } from 'svelte-sonner';
+	import { mode } from 'mode-watcher';
 	import Loader2Icon from '@lucide/svelte/icons/loader-2';
 	import CircleCheckIcon from '@lucide/svelte/icons/circle-check';
 	import OctagonXIcon from '@lucide/svelte/icons/octagon-x';
@@ -2529,7 +2521,6 @@ export { default as Toaster } from "./sonner.svelte";
 		<TriangleAlertIcon class="size-4" />
 	{/snippet}
 </Sonner>
-
 ```
 
 # src/lib/components/ui/switch/index.ts
@@ -2549,17 +2540,17 @@ export {
 
 ```svelte
 <script lang="ts">
-	import { Switch as SwitchPrimitive } from "bits-ui";
-	import { cn, type WithoutChildrenOrChild } from "$lib/utils/shadcn.js";
+	import { Switch as SwitchPrimitive } from 'bits-ui';
+	import { cn, type WithoutChildrenOrChild } from '$lib/utils/shadcn.js';
 
 	let {
 		ref = $bindable(null),
 		class: className,
 		checked = $bindable(false),
-		size = "default",
+		size = 'default',
 		...restProps
 	}: WithoutChildrenOrChild<SwitchPrimitive.RootProps> & {
-		size?: "sm" | "default";
+		size?: 'sm' | 'default';
 	} = $props();
 </script>
 
@@ -2569,17 +2560,16 @@ export {
 	data-slot="switch"
 	data-size={size}
 	class={cn(
-		"data-checked:bg-primary data-unchecked:bg-input focus-visible:border-ring focus-visible:ring-ring/50 aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive dark:aria-invalid:border-destructive/50 dark:data-unchecked:bg-input/80 shrink-0 rounded-full border border-transparent focus-visible:ring-3 aria-invalid:ring-3 data-[size=default]:h-[18.4px] data-[size=default]:w-[32px] data-[size=sm]:h-[14px] data-[size=sm]:w-[24px] peer group/switch relative inline-flex items-center transition-all outline-none after:absolute after:-inset-x-3 after:-inset-y-2 data-disabled:cursor-not-allowed data-disabled:opacity-50",
+		'peer group/switch relative inline-flex shrink-0 items-center rounded-full border border-transparent transition-all outline-none after:absolute after:-inset-x-3 after:-inset-y-2 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 data-checked:bg-primary data-disabled:cursor-not-allowed data-disabled:opacity-50 data-unchecked:bg-input data-[size=default]:h-[18.4px] data-[size=default]:w-[32px] data-[size=sm]:h-[14px] data-[size=sm]:w-[24px] dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 dark:data-unchecked:bg-input/80',
 		className
 	)}
 	{...restProps}
 >
 	<SwitchPrimitive.Thumb
 		data-slot="switch-thumb"
-		class="bg-background dark:data-unchecked:bg-foreground dark:data-checked:bg-primary-foreground rounded-full group-data-[size=default]/switch:size-4 group-data-[size=sm]/switch:size-3 group-data-[size=default]/switch:data-checked:translate-x-[calc(100%-2px)] group-data-[size=sm]/switch:data-checked:translate-x-[calc(100%-2px)] group-data-[size=default]/switch:data-unchecked:translate-x-0 group-data-[size=sm]/switch:data-unchecked:translate-x-0 pointer-events-none block ring-0 transition-transform rtl:data-[state=checked]:translate-x-[calc(-100%)]"
+		class="pointer-events-none block rounded-full bg-background ring-0 transition-transform group-data-[size=default]/switch:size-4 group-data-[size=sm]/switch:size-3 group-data-[size=default]/switch:data-checked:translate-x-[calc(100%-2px)] group-data-[size=sm]/switch:data-checked:translate-x-[calc(100%-2px)] group-data-[size=default]/switch:data-unchecked:translate-x-0 group-data-[size=sm]/switch:data-unchecked:translate-x-0 rtl:data-[state=checked]:translate-x-[calc(-100%)] dark:data-checked:bg-primary-foreground dark:data-unchecked:bg-foreground"
 	/>
 </SwitchPrimitive.Root>
-
 ```
 
 # src/lib/constants/index.ts
@@ -2964,7 +2954,8 @@ export async function load({ locals, url }) {
 					size="icon"
 					href="/dashboard/posts/new"
 					class="cursor-pointer rounded-full"
-					aria-label="New post"
+					aria-label="Write new post"
+					title="Write new post"
 				>
 					<SquarePen class="size-[1.1rem]" strokeWidth={1.5} />
 				</Button>
@@ -2982,7 +2973,7 @@ export async function load({ locals, url }) {
 							>
 								<Avatar
 									username={user!.username}
-									className="w-full h-full group-hover:border-transparent"
+									className="size-8 group-hover:border-transparent"
 								/>
 							</Button>
 						{/snippet}
@@ -3019,10 +3010,9 @@ export async function load({ locals, url }) {
 		{@render children()}
 	</main>
 </div>
-
 ```
 
-# src/routes/(dashboard)/dashboard/_components/EmptyState.svelte
+# src/routes/(dashboard)/dashboard/\_components/EmptyState.svelte
 
 ```svelte
 <script lang="ts">
@@ -3044,10 +3034,9 @@ export async function load({ locals, url }) {
 		Write your first post
 	</Button>
 </div>
-
 ```
 
-# src/routes/(dashboard)/dashboard/_components/ListHeader.svelte
+# src/routes/(dashboard)/dashboard/\_components/ListHeader.svelte
 
 ```svelte
 <div
@@ -3072,10 +3061,9 @@ export async function load({ locals, url }) {
 		Actions
 	</span>
 </div>
-
 ```
 
-# src/routes/(dashboard)/dashboard/_components/ListRow.svelte
+# src/routes/(dashboard)/dashboard/\_components/ListRow.svelte
 
 ```svelte
 <script lang="ts">
@@ -3196,16 +3184,13 @@ export async function load({ locals, url }) {
 		{/if}
 	</div>
 </div>
-
 ```
 
-# src/routes/(dashboard)/dashboard/_components/PageHeader.svelte
+# src/routes/(dashboard)/dashboard/\_components/PageHeader.svelte
 
 ```svelte
 <script lang="ts">
-	import Button from '$lib/components/ui/button/button.svelte';
 	import type { AuthResultUser } from '$lib/types/data';
-	import { SquarePen } from '@lucide/svelte';
 
 	const { user }: { user: AuthResultUser } = $props();
 </script>
@@ -3216,17 +3201,12 @@ export async function load({ locals, url }) {
 			{user.username}
 		</h1>
 
-		<p class="mt-1 text-sm text-muted-foreground">Manage your posts and moderate comments</p>
+		<p class="mt-1 text-sm text-muted-foreground">Manage your posts and moderate comments.</p>
 	</div>
-
-	<Button href="/dashboard/posts/new" class="cursor-pointer rounded-sm" variant="default">
-		<SquarePen strokeWidth={1.5} class="size-4" /> Write
-	</Button>
 </div>
-
 ```
 
-# src/routes/(dashboard)/dashboard/_components/StatsCards.svelte
+# src/routes/(dashboard)/dashboard/\_components/StatsCards.svelte
 
 ```svelte
 <script lang="ts">
@@ -3266,7 +3246,6 @@ export async function load({ locals, url }) {
 		</div>
 	{/each}
 </div>
-
 ```
 
 # src/routes/(dashboard)/dashboard/+page.server.ts
@@ -3469,10 +3448,9 @@ export const actions = {
 		{/if}
 	</div>
 </div>
-
 ```
 
-# src/routes/(dashboard)/dashboard/posts/[id]/_components/DraftBanner.svelte
+# src/routes/(dashboard)/dashboard/posts/[id]/\_components/DraftBanner.svelte
 
 ```svelte
 <script lang="ts">
@@ -3514,10 +3492,9 @@ export const actions = {
 		</button>
 	</div>
 </div>
-
 ```
 
-# src/routes/(dashboard)/dashboard/posts/[id]/_components/EditMode.svelte
+# src/routes/(dashboard)/dashboard/posts/[id]/\_components/EditMode.svelte
 
 ```svelte
 <script lang="ts">
@@ -3591,12 +3568,37 @@ export const actions = {
 			}
 		};
 	};
+
+	// Keyboard shortcut for save - Cmd+s / Ctrl+s
+	let formEl = $state<HTMLFormElement | null>(null);
+
+	$effect(() => {
+		function handleKeydown(e: KeyboardEvent) {
+			if ((e.metaKey || e.ctrlKey) && e.key === 's') {
+				e.preventDefault();
+
+				if (!submitting && hasChanges) {
+					formEl?.requestSubmit();
+				}
+			}
+		}
+
+		window.addEventListener('keydown', handleKeydown);
+
+		return () => window.removeEventListener('keydown', handleKeydown);
+	});
 </script>
 
-<section class="h-[calc(100vh-56px)] w-full">
-	<form method="post" action="?/updatePost" class="space-y-5 py-8" use:enhance={handleSubmit}>
+<section class="fixed inset-x-0 top-14 bottom-0 flex flex-col overflow-hidden bg-background">
+	<form
+		method="post"
+		bind:this={formEl}
+		action="?/updatePost"
+		class="mx-auto flex w-full max-w-4xl flex-1 flex-col overflow-hidden px-6 py-6"
+		use:enhance={handleSubmit}
+	>
 		<!-- Title input -->
-		<Field.Field>
+		<Field.Field class="shrink-0">
 			<input
 				name="title"
 				placeholder="Post title"
@@ -3613,8 +3615,8 @@ export const actions = {
 		</Field.Field>
 
 		<!-- Tiptap editor -->
-		<Field.Field>
-			<div class="rounded-sm border border-border">
+		<Field.Field class="mt-5 flex flex-1 flex-col overflow-hidden">
+			<div class="flex flex-1 flex-col overflow-hidden rounded-sm border border-border">
 				<TiptapEditor
 					content={draft.content}
 					lastSaved={draft.savedAt}
@@ -3629,7 +3631,7 @@ export const actions = {
 		</Field.Field>
 
 		<!-- Bottom bar: publish toggle + actions -->
-		<div class="flex items-center justify-between gap-3">
+		<div class="mt-5 flex shrink-0 items-center justify-between gap-3">
 			<div class="flex items-center gap-3">
 				<Switch
 					bind:checked={draft.published}
@@ -3663,10 +3665,9 @@ export const actions = {
 		</div>
 	</form>
 </section>
-
 ```
 
-# src/routes/(dashboard)/dashboard/posts/[id]/_components/TiptapEditor.svelte
+# src/routes/(dashboard)/dashboard/posts/[id]/\_components/TiptapEditor.svelte
 
 ```svelte
 <!-- $lib/components/Tiptap.svelte -->
@@ -3722,7 +3723,8 @@ export const actions = {
 			autofocus: true,
 			editorProps: {
 				attributes: {
-					class: 'tiptap prose max-w-none w-full px-3 focus:outline-none'
+					class:
+						'tiptap prose prose-zinc dark:prose-invert max-w-none w-full px-3 focus:outline-none'
 				}
 			},
 			onTransaction: ({ editor }) => {
@@ -3743,7 +3745,7 @@ export const actions = {
 
 <!-- Toolbar -->
 {#if editor}
-	<div class="flex flex-wrap gap-1 border-b border-border px-3 py-2">
+	<div class="flex shrink-0 flex-wrap gap-1 border-b border-border px-3 py-2">
 		<button
 			type="button"
 			onclick={() => editor?.chain().focus().toggleBold().run()}
@@ -3813,7 +3815,7 @@ export const actions = {
 
 <!-- Editor area -->
 <div
-	class="min-h-120 w-full cursor-text py-2"
+	class="flex-1 cursor-text overflow-y-auto px-3 py-2"
 	bind:this={element}
 	role="textbox"
 	tabindex="0"
@@ -3841,10 +3843,9 @@ export const actions = {
 		line-height: 1.75;
 	}
 </style>
-
 ```
 
-# src/routes/(dashboard)/dashboard/posts/[id]/_components/ViewMode.svelte
+# src/routes/(dashboard)/dashboard/posts/[id]/\_components/ViewMode.svelte
 
 ```svelte
 <script lang="ts">
@@ -3905,7 +3906,7 @@ export const actions = {
 
 <section class="w-full">
 	<!-- Back link -->
-	<div class="border-b border-border py-3.5">
+	<div class="py-3">
 		<a
 			href="/dashboard"
 			class="flex items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
@@ -4067,7 +4068,6 @@ export const actions = {
 		{/if}
 	</div>
 </section>
-
 ```
 
 # src/routes/(dashboard)/dashboard/posts/[id]/+page.server.ts
@@ -4360,14 +4360,277 @@ export const actions = {
 		/>
 	{/if}
 </div>
+```
 
+# src/routes/(dashboard)/dashboard/posts/new/+page.server.ts
+
+```ts
+import { flattenError } from 'zod';
+import type { Actions } from './$types';
+import { fail, redirect } from '@sveltejs/kit';
+
+import { createPost } from '$lib/api/post';
+import { createPostSchema } from '$lib/schema/post';
+import { handleActionError } from '$lib/utils/error-handlers';
+
+export const actions = {
+	default: async ({ request, fetch }) => {
+		const formData = await request.formData();
+		const data = {
+			title: formData.get('title') as string,
+			content: formData.get('content') as string,
+			published: formData.get('published') === 'true'
+		};
+
+		const validateResult = createPostSchema.safeParse(data);
+		if (!validateResult.success) {
+			return fail(400, {
+				errors: flattenError(validateResult.error).fieldErrors,
+				data
+			});
+		}
+
+		let newPostId: number;
+
+		try {
+			const result = await createPost(validateResult.data, fetch);
+			newPostId = result.post.id;
+		} catch (err) {
+			return handleActionError(err);
+		}
+
+		redirect(303, `/dashboard/posts/${newPostId}`);
+	}
+} satisfies Actions;
+
+```
+
+# src/routes/(dashboard)/dashboard/posts/new/+page.svelte
+
+```svelte
+<script lang="ts">
+	import { toast } from 'svelte-sonner';
+	import { enhance } from '$app/forms';
+	import { browser } from '$app/environment';
+	import type { SubmitFunction } from '@sveltejs/kit';
+	import type { PageProps } from './$types';
+
+	import Label from '$lib/components/ui/label/label.svelte';
+	import Button from '$lib/components/ui/button/button.svelte';
+	import Switch from '$lib/components/ui/switch/switch.svelte';
+	import * as Field from '$lib/components/ui/field/index.js';
+
+	import { getExcerpt } from '$lib/utils/formatters';
+	import { sanitizeHtml } from '$lib/utils/sanitize';
+	import TiptapEditor from '../[id]/_components/TiptapEditor.svelte';
+
+	const STORAGE_KEY = 'draft:new-post';
+
+	type NewDraft = {
+		title: string;
+		content: string;
+		published: boolean;
+		savedAt: string | null;
+	};
+
+	let { form }: PageProps = $props();
+
+	let draft = $state<NewDraft>({
+		title: '',
+		content: '',
+		published: false,
+		savedAt: null
+	});
+
+	let submitting = $state(false);
+	let isTitleFocused = $state(false);
+	let hydrated = $state(false);
+	let formEl = $state<HTMLFormElement | null>(null);
+
+	let hasMeaningfulInput = $derived(
+		draft.title.trim().length > 0 || getExcerpt(draft.content).length > 0
+	);
+
+	function saveDraft() {
+		if (!browser || !hasMeaningfulInput) return;
+
+		const now = new Date().toLocaleTimeString();
+		localStorage.setItem(
+			STORAGE_KEY,
+			JSON.stringify({
+				title: draft.title,
+				content: draft.content,
+				published: draft.published,
+				savedAt: now
+			})
+		);
+		draft = { ...draft, savedAt: now };
+
+		toast.success('Draft saved locally!');
+	}
+
+	function loadStoredDraft() {
+		if (!browser) return;
+
+		const saved = localStorage.getItem(STORAGE_KEY);
+		if (!saved) return;
+
+		try {
+			const parsed = JSON.parse(saved);
+			draft = {
+				title: parsed.title ?? '',
+				content: parsed.content ?? '',
+				published: parsed.published ?? false,
+				savedAt: parsed.savedAt ?? null
+			};
+		} catch {
+			// bad JSON in storage — ignore
+		}
+	}
+
+	function clearDraft() {
+		if (!browser) return;
+		localStorage.removeItem(STORAGE_KEY);
+	}
+
+	function handleContentUpdate(html: string) {
+		draft = { ...draft, content: sanitizeHtml(html) };
+	}
+
+	// Hydrate once on mount
+	$effect(() => {
+		if (hydrated) return;
+		hydrated = true;
+		loadStoredDraft();
+	});
+
+	// Auto-save every 30s while there's meaningful content
+	$effect(() => {
+		if (!browser || !hasMeaningfulInput) return;
+
+		const interval = setInterval(saveDraft, 30000);
+		return () => clearInterval(interval);
+	});
+
+	// Cmd/Ctrl+S shortcut
+	$effect(() => {
+		function handleKeydown(e: KeyboardEvent) {
+			if ((e.metaKey || e.ctrlKey) && e.key === 's') {
+				e.preventDefault();
+				if (!submitting && hasMeaningfulInput) {
+					formEl?.requestSubmit();
+				}
+			}
+		}
+
+		window.addEventListener('keydown', handleKeydown);
+		return () => window.removeEventListener('keydown', handleKeydown);
+	});
+
+	const handleSubmit: SubmitFunction = ({ formData }) => {
+		submitting = true;
+		formData.set('content', draft.content);
+		formData.set('published', String(draft.published));
+
+		return async ({ result, update }) => {
+			submitting = false;
+
+			if (result.type === 'redirect') {
+				clearDraft();
+				toast.success('Post created!');
+			}
+
+			await update({ reset: false });
+		};
+	};
+</script>
+
+<svelte:head>
+	<title>New post — Dashboard</title>
+</svelte:head>
+
+<section class="fixed inset-x-0 top-14 bottom-0 flex flex-col overflow-hidden bg-background">
+	<form
+		bind:this={formEl}
+		method="post"
+		class="mx-auto flex w-full max-w-4xl flex-1 flex-col overflow-hidden px-6 py-6"
+		use:enhance={handleSubmit}
+	>
+		<!-- Title -->
+		<Field.Field class="shrink-0">
+			<input
+				name="title"
+				placeholder="New post title"
+				bind:value={draft.title}
+				onfocus={() => (isTitleFocused = true)}
+				onblur={() => (isTitleFocused = false)}
+				class="w-full border-l bg-transparent px-2 font-roboto text-2xl tracking-tight placeholder:text-muted-foreground/40 focus:outline-none {isTitleFocused
+					? 'border-transparent'
+					: 'border-border'}"
+			/>
+			{#if form?.errors?.title}
+				<Field.FieldError>{form.errors.title[0]}</Field.FieldError>
+			{/if}
+		</Field.Field>
+
+		<!-- Tiptap editor -->
+		<Field.Field class="mt-5 flex flex-1 flex-col overflow-hidden">
+			<div class="flex flex-1 flex-col overflow-hidden rounded-sm border border-border">
+				<TiptapEditor
+					content={draft.content}
+					lastSaved={draft.savedAt}
+					disableSave={!hasMeaningfulInput}
+					onUpdate={handleContentUpdate}
+					{saveDraft}
+				/>
+			</div>
+			{#if form?.errors?.content}
+				<Field.FieldError>{form.errors.content[0]}</Field.FieldError>
+			{/if}
+		</Field.Field>
+
+		<!-- Bottom bar: publish toggle + actions -->
+		<div class="mt-5 flex shrink-0 items-center justify-between gap-3">
+			<div class="flex items-center gap-3">
+				<Switch
+					bind:checked={draft.published}
+					id="published"
+					disabled={submitting}
+					class="cursor-pointer data-[state=checked]:bg-primary data-[state=unchecked]:bg-input [&_span]:data-[state=checked]:translate-x-[calc(100%-2px)]"
+				/>
+				<Label for="published" class="cursor-pointer text-sm text-muted-foreground">
+					{draft.published ? 'Publish on save' : 'Save as draft'}
+				</Label>
+			</div>
+
+			<div class="flex items-center gap-2">
+				<Button
+					type="button"
+					variant="outline"
+					class="min-w-22 cursor-pointer rounded-sm"
+					disabled={submitting}
+					href="/dashboard"
+				>
+					Cancel
+				</Button>
+				<Button
+					type="submit"
+					class="min-w-22 cursor-pointer rounded-sm"
+					disabled={submitting || !hasMeaningfulInput}
+				>
+					{submitting ? 'Saving...' : 'Save'}
+				</Button>
+			</div>
+		</div>
+	</form>
+</section>
 ```
 
 # src/routes/(public)/+layout.svelte
 
 ```svelte
 <script lang="ts">
-	import Header from '../Header.svelte';
+	import Header from './Header.svelte';
 
 	let { children, data } = $props();
 </script>
@@ -4379,7 +4642,6 @@ export const actions = {
 		{@render children()}
 	</main>
 </div>
-
 ```
 
 # src/routes/(public)/+page.server.ts
@@ -4392,9 +4654,10 @@ export async function load({ url, fetch }) {
 	const page = url.searchParams.get('page') ? Number(url.searchParams.get('page')) : undefined;
 	const limit = url.searchParams.get('limit') ? Number(url.searchParams.get('limit')) : undefined;
 	const search = url.searchParams.get('search') ?? undefined;
+	const sort = url.searchParams.get('sort') as 'latest' | 'likes' | 'comments' | undefined;
 
 	try {
-		const result = await getPosts({ page, limit, search }, fetch);
+		const result = await getPosts({ page, limit, search, sort }, fetch);
 
 		return {
 			posts: result.posts,
@@ -4418,7 +4681,12 @@ export async function load({ url, fetch }) {
 	import { Heart, Clock, ChevronLeft, ChevronRight, MessageSquare } from '@lucide/svelte';
 
 	import Avatar from '$lib/components/Avatar.svelte';
-	import { formatCompactNum, getReadingTime } from '$lib/utils/formatters';
+	import {
+		formatCompactNum,
+		getExcerpt,
+		getReadingTime,
+		getThumbnailColor
+	} from '$lib/utils/formatters';
 
 	let { data }: PageProps = $props();
 
@@ -4436,45 +4704,17 @@ export async function load({ url, fetch }) {
 	let sort = $derived((page.url.searchParams.get('sort') ?? 'latest') as SortKey);
 	let search = $derived(page.url.searchParams.get('search')?.trim() ?? '');
 
-	// Note: this sorts within the current page only.
-	// For true global sorting, the server API would need a sort param.
-	let sortedPosts = $derived.by(() => {
-		let result = [...posts];
-
-		if (sort === 'likes') return result.sort((a, b) => b.likesCount - a.likesCount);
-
-		if (sort === 'comments') return result.sort((a, b) => b.commentsCount - a.commentsCount);
-
-		return result.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-	});
-
 	function setSort(value: SortKey) {
 		const url = new URL(page.url);
 		url.searchParams.set('sort', value);
 		url.searchParams.delete('page');
-		goto(url.toString());
+		goto(url.toString(), { invalidateAll: true });
 	}
 
 	function setPage(nextPage: number) {
 		const url = new URL(page.url);
 		url.searchParams.set('page', String(nextPage));
 		goto(url.toString());
-	}
-
-	function getExcerpt(content: string): string {
-		return content.replace(/<[^>]*>/g, '').trim();
-	}
-
-	const THUMBNAIL_COLORS = [
-		'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-200',
-		'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200',
-		'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200',
-		'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-200',
-		'bg-violet-100 text-violet-800 dark:bg-violet-950 dark:text-violet-200'
-	];
-
-	function getThumbnailColor(title: string): string {
-		return THUMBNAIL_COLORS[title.charCodeAt(0) % THUMBNAIL_COLORS.length];
 	}
 </script>
 
@@ -4506,7 +4746,7 @@ export async function load({ url, fetch }) {
 
 	<!-- Post list -->
 	<ul class="px-6">
-		{#each sortedPosts as post (post.id)}
+		{#each posts as post (post.id)}
 			<li>
 				<a
 					href="/posts/{post.id}"
@@ -4565,7 +4805,7 @@ export async function load({ url, fetch }) {
 		{/each}
 
 		<!-- Empty state -->
-		{#if sortedPosts.length === 0}
+		{#if posts.length === 0}
 			<div class="border-t border-border text-center">
 				{#if search}
 					<p class="text-sm text-muted-foreground">
@@ -4605,7 +4845,245 @@ export async function load({ url, fetch }) {
 		</div>
 	{/if}
 </div>
+```
 
+# src/routes/(public)/Header.svelte
+
+```svelte
+<script lang="ts">
+	import { page } from '$app/state';
+	import { enhance } from '$app/forms';
+	import { goto } from '$app/navigation';
+	import { tick } from 'svelte';
+
+	import Button from '$lib/components/ui/button/button.svelte';
+	import * as DropdownMenu from '$lib/components/ui/dropdown-menu/index.js';
+	import {
+		Search,
+		SquarePen,
+		X,
+		Menu,
+		LogIn,
+		LogOut,
+		UserPlus,
+		LayoutDashboard
+	} from '@lucide/svelte';
+
+	import Avatar from '$lib/components/Avatar.svelte';
+	import type { AuthResultUser } from '$lib/types/data';
+	import { fade, slide } from 'svelte/transition';
+
+	interface Props {
+		user: AuthResultUser | null;
+	}
+
+	let { user }: Props = $props();
+	let authenticated = $derived(!!user);
+
+	// let redirect = $derived(page.url.pathname + page.url.hash);
+	let redirect = $derived(page.url.pathname + page.url.hash + page.url.search);
+
+	// Search state
+	let searchOpen = $state(false);
+	let searchInput = $state<HTMLInputElement | null>(null);
+	let searchValue = $derived(page.url.searchParams.get('search') ?? '');
+
+	async function openSearch() {
+		searchOpen = true;
+		await tick();
+		searchInput?.focus();
+	}
+
+	function closeSearch() {
+		searchOpen = false;
+		searchValue = '';
+
+		syncUrl('');
+	}
+
+	function syncUrl(value: string) {
+		const url = new URL(page.url);
+
+		if (value.trim()) {
+			url.searchParams.set('search', value.trim());
+			url.searchParams.delete('page');
+		} else {
+			url.searchParams.delete('search');
+		}
+
+		goto(url, { replaceState: true, keepFocus: true, noScroll: true });
+	}
+
+	let debounceTimer: ReturnType<typeof setTimeout>;
+
+	function handleSearchInput() {
+		console.log({ searchValue });
+
+		clearTimeout(debounceTimer);
+
+		debounceTimer = setTimeout(() => syncUrl(searchValue), 300);
+	}
+
+	function handleSearchKeydown(e: KeyboardEvent) {
+		if (e.key === 'Escape') {
+			closeSearch();
+		}
+	}
+
+	// Close search input when clicking out of header
+	let headerEl = $state<HTMLElement | null>(null);
+
+	$effect(() => {
+		if (!searchOpen) return;
+
+		function handleClick(e: MouseEvent) {
+			if (headerEl && !headerEl.contains(e.target as Node)) {
+				closeSearch();
+			}
+		}
+
+		document.addEventListener('mousedown', handleClick);
+
+		return () => document.removeEventListener('mousedown', handleClick);
+	});
+</script>
+
+<header
+	bind:this={headerEl}
+	class="sticky top-0 z-20 w-full border-b border-border bg-background/80 backdrop-blur"
+>
+	<div class="relative mx-auto flex h-14 w-full max-w-2xl items-center justify-between px-6">
+		<!-- Brand -->
+		{#if !searchOpen}
+			<div
+				class="flex w-full items-center justify-between transition-opacity duration-200"
+				class:opacity-0={searchOpen}
+				class:pointer-events-none={searchOpen}
+			>
+				<a href="/" class="font-anton text-xl tracking-normal">The Blog</a>
+			</div>
+		{/if}
+
+		<!-- Search overlay -->
+		{#if searchOpen}
+			<div
+				transition:fade={{ duration: 150 }}
+				class="absolute inset-x-6 flex items-center gap-2 bg-background"
+			>
+				<Search size={15} class="shrink-0 text-muted-foreground" />
+				<input
+					type="text"
+					bind:this={searchInput}
+					bind:value={searchValue}
+					placeholder="Search posts..."
+					oninput={handleSearchInput}
+					onkeydown={handleSearchKeydown}
+					class="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none"
+				/>
+				<button
+					type="button"
+					aria-label="Close search"
+					onclick={closeSearch}
+					class="shrink-0 cursor-pointer rounded-full p-1 text-muted-foreground transition-colors hover:text-foreground"
+				>
+					<X size={15} />
+				</button>
+			</div>
+		{/if}
+
+		<!-- Right actions -->
+		{#if !searchOpen}
+			<div transition:fade={{ duration: 150 }} class="flex items-center gap-1">
+				<!-- Search toggle -->
+				<Button
+					variant="ghost"
+					size="icon"
+					aria-label="Search posts"
+					onclick={openSearch}
+					class="cursor-pointer rounded-full"
+				>
+					<Search class="size-[1.1rem]" />
+				</Button>
+
+				<!-- Write - only shown when authenticated -->
+				{#if authenticated}
+					<Button
+						variant="ghost"
+						size="icon"
+						aria-label="Write a post"
+						href="/dashboard/posts/new"
+						class="cursor-pointer rounded-full"
+					>
+						<SquarePen class="size-[1.1rem]" />
+					</Button>
+				{/if}
+
+				<!-- Avatar / menu dropdown -->
+				<DropdownMenu.Root>
+					<DropdownMenu.Trigger>
+						{#snippet child({ props })}
+							<Button
+								{...props}
+								variant="ghost"
+								size="icon"
+								aria-label="Menu"
+								class="group cursor-pointer rounded-full px-0!"
+							>
+								{#if authenticated}
+									<Avatar
+										username={user!.username}
+										className="size-8 group-hover:border-transparent"
+									/>
+								{:else}
+									<Menu class="size-[1.1rem]" />
+								{/if}
+							</Button>
+						{/snippet}
+					</DropdownMenu.Trigger>
+
+					<DropdownMenu.Content class="w-40 rounded-sm p-2" align="end">
+						{#if authenticated}
+							<DropdownMenu.Label class="text-xs">{user!.username}</DropdownMenu.Label>
+							<DropdownMenu.Separator class="mb-1" />
+						{/if}
+
+						<DropdownMenu.Group class="space-y-0.5">
+							{#if authenticated}
+								<DropdownMenu.Item class="cursor-pointer" onclick={() => goto('/dashboard')}>
+									<LayoutDashboard class="size-4" /> Dashboard
+								</DropdownMenu.Item>
+
+								<form action="/auth/logout" method="post" use:enhance>
+									<DropdownMenu.Item class="w-full cursor-pointer">
+										{#snippet child({ props })}
+											<button {...props} type="submit">
+												<LogOut class="size-[1.1rem]" /> Logout
+											</button>
+										{/snippet}
+									</DropdownMenu.Item>
+								</form>
+							{:else}
+								<DropdownMenu.Item
+									class="cursor-pointer"
+									onclick={() => goto(`/auth/login?redirect=${encodeURIComponent(redirect)}`)}
+								>
+									<LogIn class="size-4" /> Login
+								</DropdownMenu.Item>
+
+								<DropdownMenu.Item
+									class="cursor-pointer"
+									onclick={() => goto(`/auth/register?redirect=${encodeURIComponent(redirect)}`)}
+								>
+									<UserPlus class="size-4" /> Register
+								</DropdownMenu.Item>
+							{/if}
+						</DropdownMenu.Group>
+					</DropdownMenu.Content>
+				</DropdownMenu.Root>
+			</div>
+		{/if}
+	</div>
+</header>
 ```
 
 # src/routes/(public)/posts/[id]/+page.server.ts
@@ -4756,7 +5234,6 @@ export const actions = {
 	<ArticleControls {post} {user} {handleCommentClick} />
 	<CommentsSection {user} {post} {form} bind:this={commentSection} />
 </div>
-
 ```
 
 # src/routes/(public)/posts/[id]/Article.svelte
@@ -4778,7 +5255,7 @@ export const actions = {
 
 <section class="w-full">
 	<!-- Back link -->
-	<div class="border-b border-border py-3.5">
+	<div class="py-3">
 		<a
 			href="/"
 			class="flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
@@ -4827,7 +5304,6 @@ export const actions = {
 		{@html sanitizeHtml(post.content)}
 	</div>
 </section>
-
 ```
 
 # src/routes/(public)/posts/[id]/ArticleControls.svelte
@@ -4920,7 +5396,6 @@ export const actions = {
 		</span>
 	</button>
 </div>
-
 ```
 
 # src/routes/(public)/posts/[id]/CommentsSection.svelte
@@ -5209,7 +5684,6 @@ export const actions = {
 		<p class="py-10 text-center text-sm text-muted-foreground">No comments yet. Be the first.</p>
 	{/if}
 </section>
-
 ```
 
 # src/routes/(public)/users/[id]/+page.server.ts
@@ -5263,7 +5737,7 @@ export async function load({ params, fetch }) {
 
 <div class="w-full px-6 pb-16">
 	<!-- Back link -->
-	<div class="border-b border-border py-3.5">
+	<div class="py-3">
 		<a
 			href="/"
 			class="flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
@@ -5350,7 +5824,6 @@ export async function load({ params, fetch }) {
 		</div>
 	{/if}
 </div>
-
 ```
 
 # src/routes/+error.svelte
@@ -5423,7 +5896,6 @@ export async function load({ params, fetch }) {
 		</div>
 	</main>
 </div>
-
 ```
 
 # src/routes/+layout.server.ts
@@ -5455,7 +5927,6 @@ export async function load({ locals }) {
 <Toaster position="bottom-left" />
 
 {@render children()}
-
 ```
 
 # src/routes/auth/+layout.svelte
@@ -5482,7 +5953,6 @@ export async function load({ locals }) {
 		{@render children()}
 	</main>
 </div>
-
 ```
 
 # src/routes/auth/login/+page.server.ts
@@ -5623,7 +6093,7 @@ export const actions = {
 
 <div class="mt-10 flex w-full max-w-md flex-1 sm:mt-20">
 	<form class="w-full px-4 sm:px-8" method="post" novalidate use:enhance={handleSubmit}>
-		<h1 class="font-ibm mb-12 scroll-m-20 text-3xl font-extrabold tracking-tight lg:text-4xl">
+		<h1 class="mb-12 scroll-m-20 font-ibm text-3xl font-extrabold tracking-tight lg:text-4xl">
 			Login
 		</h1>
 
@@ -5675,7 +6145,6 @@ export const actions = {
 		</p>
 	</form>
 </div>
-
 ```
 
 # src/routes/auth/logout/+page.server.ts
@@ -5777,9 +6246,9 @@ export const actions = {
 		}
 	});
 
-	const clearError = (filedName: string) => {
-		if (localErrors[filedName] || localFormError) {
-			localErrors[filedName] = undefined;
+	const clearError = (fieldName: string) => {
+		if (localErrors[fieldName] || localFormError) {
+			localErrors[fieldName] = undefined;
 			localFormError = undefined;
 		}
 	};
@@ -5816,7 +6285,7 @@ export const actions = {
 
 <div class="mt-10 flex w-full max-w-md flex-1 sm:mt-20">
 	<form class="w-full px-4 sm:px-8" method="post" novalidate use:enhance={handleSubmit}>
-		<h1 class="font-ibm mb-12 scroll-m-20 text-3xl font-extrabold tracking-tight lg:text-4xl">
+		<h1 class="mb-12 scroll-m-20 font-ibm text-3xl font-extrabold tracking-tight lg:text-4xl">
 			Register
 		</h1>
 
@@ -5886,231 +6355,6 @@ export const actions = {
 		</p>
 	</form>
 </div>
-
-```
-
-# src/routes/Header.svelte
-
-```svelte
-<script lang="ts">
-	import { page } from '$app/state';
-	import { enhance } from '$app/forms';
-	import { goto } from '$app/navigation';
-	import { tick } from 'svelte';
-
-	import Button from '$lib/components/ui/button/button.svelte';
-	import * as DropdownMenu from '$lib/components/ui/dropdown-menu/index.js';
-	import { Search, SquarePen, X, Menu, LogIn, LogOut, UserPlus } from '@lucide/svelte';
-
-	import Avatar from '$lib/components/Avatar.svelte';
-	import type { AuthResultUser } from '$lib/types/data';
-	import { fade, slide } from 'svelte/transition';
-
-	interface Props {
-		user: AuthResultUser | null;
-	}
-
-	let { user }: Props = $props();
-	let authenticated = $derived(!!user);
-
-	// let redirect = $derived(page.url.pathname + page.url.hash);
-	let redirect = $derived(page.url.pathname + page.url.hash + page.url.search);
-
-	// Search state
-	let searchOpen = $state(false);
-	let searchInput = $state<HTMLInputElement | null>(null);
-	let searchValue = $derived(page.url.searchParams.get('search') ?? '');
-
-	async function openSearch() {
-		searchOpen = true;
-		await tick();
-		searchInput?.focus();
-	}
-
-	function closeSearch() {
-		searchOpen = false;
-		searchValue = '';
-
-		syncUrl('');
-	}
-
-	function syncUrl(value: string) {
-		const url = new URL(page.url);
-
-		if (value.trim()) {
-			url.searchParams.set('search', value.trim());
-			url.searchParams.delete('page');
-		} else {
-			url.searchParams.delete('search');
-		}
-
-		goto(url, { replaceState: true, keepFocus: true, noScroll: true });
-	}
-
-	let debounceTimer: ReturnType<typeof setTimeout>;
-
-	function handleSearchInput() {
-		console.log({ searchValue });
-
-		clearTimeout(debounceTimer);
-
-		debounceTimer = setTimeout(() => syncUrl(searchValue), 300);
-	}
-
-	function handleSearchKeydown(e: KeyboardEvent) {
-		if (e.key === 'Escape') {
-			closeSearch();
-		}
-	}
-
-	// Close search input when clicking out of header
-	let headerEl = $state<HTMLElement | null>(null);
-
-	$effect(() => {
-		if (!searchOpen) return;
-
-		function handleClick(e: MouseEvent) {
-			if (headerEl && !headerEl.contains(e.target as Node)) {
-				closeSearch();
-			}
-		}
-
-		document.addEventListener('mousedown', handleClick);
-
-		return () => document.removeEventListener('mousedown', handleClick);
-	});
-</script>
-
-<header
-	bind:this={headerEl}
-	class="sticky top-0 z-20 w-full border-b border-border bg-background/80 backdrop-blur"
->
-	<div class="relative mx-auto flex h-14 w-full max-w-2xl items-center justify-between px-6">
-		<!-- Brand -->
-		{#if !searchOpen}
-			<div
-				class="flex w-full items-center justify-between transition-opacity duration-200"
-				class:opacity-0={searchOpen}
-				class:pointer-events-none={searchOpen}
-			>
-				<a href="/" class="font-anton text-xl tracking-normal">The Blog</a>
-			</div>
-		{/if}
-
-		<!-- Search overlay -->
-		{#if searchOpen}
-			<div
-				transition:fade={{ duration: 150 }}
-				class="absolute inset-x-6 flex items-center gap-2 bg-background"
-			>
-				<Search size={15} class="shrink-0 text-muted-foreground" />
-				<input
-					type="text"
-					bind:this={searchInput}
-					bind:value={searchValue}
-					placeholder="Search posts..."
-					oninput={handleSearchInput}
-					onkeydown={handleSearchKeydown}
-					class="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none"
-				/>
-				<button
-					type="button"
-					aria-label="Close search"
-					onclick={closeSearch}
-					class="shrink-0 cursor-pointer rounded-full p-1 text-muted-foreground transition-colors hover:text-foreground"
-				>
-					<X size={15} />
-				</button>
-			</div>
-		{/if}
-
-		<!-- Right actions -->
-		{#if !searchOpen}
-			<div transition:fade={{ duration: 150 }} class="flex items-center gap-1">
-				<!-- Search toggle -->
-				<Button
-					variant="ghost"
-					size="icon"
-					aria-label="Search posts"
-					onclick={openSearch}
-					class="cursor-pointer rounded-full"
-				>
-					<Search class="size-[1.1rem]" />
-				</Button>
-
-				<!-- Write - only shown when authenticated -->
-				{#if authenticated}
-					<Button
-						variant="ghost"
-						size="icon"
-						aria-label="Write a post"
-						href="/dashboard/posts/new"
-						class="cursor-pointer rounded-full"
-					>
-						<SquarePen class="size-[1.1rem]" />
-					</Button>
-				{/if}
-
-				<!-- Avatar / menu dropdown -->
-				<DropdownMenu.Root>
-					<DropdownMenu.Trigger>
-						{#snippet child({ props })}
-							<Button
-								{...props}
-								variant="ghost"
-								size="icon"
-								aria-label="Menu"
-								class="group cursor-pointer rounded-full px-0!"
-							>
-								{#if authenticated}
-									<Avatar username={user!.username} className="group-hover:border-transparent" />
-								{:else}
-									<Menu class="size-[1.1rem]" />
-								{/if}
-							</Button>
-						{/snippet}
-					</DropdownMenu.Trigger>
-
-					<DropdownMenu.Content class="w-40 rounded-sm p-2" align="end">
-						{#if authenticated}
-							<DropdownMenu.Label class="text-xs">{user!.username}</DropdownMenu.Label>
-							<DropdownMenu.Separator class="mb-1" />
-						{/if}
-
-						<DropdownMenu.Group class="space-y-0.5">
-							{#if authenticated}
-								<form action="/auth/logout" method="post" use:enhance>
-									<DropdownMenu.Item class="w-full cursor-pointer">
-										{#snippet child({ props })}
-											<button {...props} type="submit">
-												<LogOut class="size-[1.1rem]" /> Logout
-											</button>
-										{/snippet}
-									</DropdownMenu.Item>
-								</form>
-							{:else}
-								<DropdownMenu.Item
-									class="cursor-pointer"
-									onclick={() => goto(`/auth/login?redirect=${encodeURIComponent(redirect)}`)}
-								>
-									<LogIn class="size-4" /> Login
-								</DropdownMenu.Item>
-
-								<DropdownMenu.Item
-									class="cursor-pointer"
-									onclick={() => goto(`/auth/register?redirect=${encodeURIComponent(redirect)}`)}
-								>
-									<UserPlus class="size-4" /> Register
-								</DropdownMenu.Item>
-							{/if}
-						</DropdownMenu.Group>
-					</DropdownMenu.Content>
-				</DropdownMenu.Root>
-			</div>
-		{/if}
-	</div>
-</header>
-
 ```
 
 # src/routes/layout.css
@@ -6259,7 +6503,6 @@ export const actions = {
 			sans-serif;
 	}
 }
-
 ```
 
 # static/robots.txt
@@ -6291,7 +6534,6 @@ const config = {
 };
 
 export default config;
-
 ```
 
 # tsconfig.json
@@ -6317,7 +6559,6 @@ export default config;
 	// To make changes to top-level options such as include and exclude, we recommend extending
 	// the generated config; see https://svelte.dev/docs/kit/configuration#typescript
 }
-
 ```
 
 # vite.config.ts
@@ -6346,4 +6587,3 @@ export default defineConfig(({ mode }) => {
 });
 
 ```
-

@@ -58,6 +58,10 @@ export function updatePost(
 	return apiPut<{ post: PostWithAuthor }>(`/api/posts/${id}`, data, customFetch);
 }
 
+export async function likePost(id: number, customFetch = fetch) {
+	return apiPost(`/api/posts/${id}/like`, undefined, customFetch);
+}
+
 export function createComment(postId: number, content: string, customFetch = fetch) {
 	return apiPost(`/api/posts/${postId}/comments`, { content }, customFetch);
 }

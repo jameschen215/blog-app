@@ -130,7 +130,6 @@
 		draft = { ...draft, content: sanitizeHtml(html) };
 	}
 
-	// illustrate this $effect
 	$effect(() => {
 		if (hydratedPostId === post.id) return;
 

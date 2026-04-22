@@ -5,7 +5,7 @@
 
 	import { getExcerpt } from '$lib/utils/formatters';
 
-	import TiptapEditor from './TiptapEditor.svelte';
+	import TiptapEditor from '../../_components/TiptapEditor.svelte';
 	import Label from '$lib/components/ui/label/label.svelte';
 	import * as Field from '$lib/components/ui/field/index.js';
 	import Button from '$lib/components/ui/button/button.svelte';
