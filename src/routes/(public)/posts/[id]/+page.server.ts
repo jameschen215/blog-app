@@ -1,4 +1,3 @@
-import { flattenError } from 'zod';
 import { error, fail } from '@sveltejs/kit';
 import type { Actions } from './$types';
 
@@ -6,6 +5,7 @@ import { APIError } from '$lib/api/client';
 import { getPost, likePost, createComment, updateComment } from '$lib/api/post';
 import { handleLoadError, handleActionError } from '$lib/utils/error-handlers';
 import { commentSchema } from '$lib/schema/comment';
+import { parseFormData } from '$lib/utils/form';
 
 export async function load({ params, fetch }) {
 	const id = Number(params.id);
@@ -60,17 +60,12 @@ export const actions = {
 			error(400, 'Invalid post ID');
 		}
 
-		const formData = await request.formData();
-		const data = Object.fromEntries(formData);
+		const { data, errors } = parseFormData(commentSchema, await request.formData());
 
-		const validateResult = commentSchema.safeParse(data);
-
-		if (!validateResult.success) {
-			return fail(400, { errors: flattenError(validateResult.error).fieldErrors });
-		}
+		if (!data) return fail(400, { errors });
 
 		try {
-			await createComment(postId, validateResult.data.content, fetch);
+			await createComment(postId, data.content, fetch);
 			return { success: true };
 		} catch (err) {
 			return handleActionError(err);
@@ -84,7 +79,6 @@ export const actions = {
 		const postId = Number(params.id);
 		const formData = await request.formData();
 		const commentId = Number(formData.get('commentId'));
-		const content = formData.get('content') as string;
 
 		if (!Number.isInteger(postId) || postId < 1) {
 			error(400, 'Invalid post ID');
@@ -94,14 +88,12 @@ export const actions = {
 			return fail(400, 'Invalid comment ID');
 		}
 
-		const result = commentSchema.safeParse({ content });
+		const { data, errors } = parseFormData(commentSchema, formData);
 
-		if (!result.success) {
-			return fail(400, { errors: flattenError(result.error).fieldErrors });
-		}
+		if (!data) return fail(400, { errors });
 
 		try {
-			await updateComment(postId, commentId, content, fetch);
+			await updateComment(postId, commentId, data.content, fetch);
 			return { success: true };
 		} catch (err) {
 			return handleActionError(err);

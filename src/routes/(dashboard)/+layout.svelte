@@ -5,6 +5,7 @@
 
 	import Avatar from '$lib/components/Avatar.svelte';
 	import Button from '$lib/components/ui/button/button.svelte';
+	import HeaderShell from '$lib/components/HeaderShell.svelte';
 	import { LayoutDashboard, LogOut, SquarePen } from '@lucide/svelte';
 	import * as DropdownMenu from '$lib/components/ui/dropdown-menu';
 	import LoadingSpinner from '$lib/components/LoadingSpinner.svelte';
@@ -16,8 +17,7 @@
 
 <div class="flex min-h-screen flex-col items-center">
 	<!-- Header -->
-	<header class="sticky top-0 z-20 w-full border-b border-border bg-background/80 backdrop-blur">
-		<div class="mx-auto flex h-14 w-full max-w-4xl items-center justify-between px-6">
+	<HeaderShell maxWidth="max-w-4xl">
 			<!-- Brand -->
 			<a
 				href="/dashboard"
@@ -81,8 +81,7 @@
 					</DropdownMenu.Content>
 				</DropdownMenu.Root>
 			</div>
-		</div>
-	</header>
+	</HeaderShell>
 
 	<LoadingSpinner />
 

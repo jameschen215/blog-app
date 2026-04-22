@@ -1,7 +1,7 @@
 import { fail } from '@sveltejs/kit';
-import type { Actions } from './$types.js';
+import type { Actions } from './$types';
 
-import { deletePostSchema, togglePublishSchema } from '$lib/schema/post.js';
+import { deletePostSchema, togglePublishSchema } from '$lib/schema/post';
 import { deletePost, getPostsByAuthor, togglePostPublish } from '$lib/api/post';
 import { handleActionError, handleLoadError } from '$lib/utils/error-handlers';
 

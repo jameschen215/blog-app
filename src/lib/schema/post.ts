@@ -16,7 +16,5 @@ export const createPostSchema = z.object({
 
 export const updatePostSchema = createPostSchema.partial();
 
-export type TogglePublishInput = z.infer<typeof togglePublishSchema>;
-export type DeletePostInput = z.infer<typeof deletePostSchema>;
 export type CreatePostInput = z.infer<typeof createPostSchema>;
 export type UpdatePostInput = z.infer<typeof updatePostSchema>;

@@ -1,10 +1,10 @@
-import { flattenError } from 'zod';
 import type { Actions } from './$types';
 import { fail, redirect } from '@sveltejs/kit';
 
-import { login } from '$lib/api/auth.js';
-import { APIError } from '$lib/api/client.js';
-import { loginSchema } from '$lib/schema/auth.js';
+import { login } from '$lib/api/auth';
+import { APIError } from '$lib/api/client';
+import { loginSchema } from '$lib/schema/auth';
+import { parseFormData } from '$lib/utils/form';
 
 export async function load({ locals }) {
 	if (locals.user) redirect(307, '/');
@@ -12,21 +12,12 @@ export async function load({ locals }) {
 
 export const actions = {
 	default: async ({ request, fetch, url }) => {
-		const formData = await request.formData();
-		const data = Object.fromEntries(formData);
+		const { data, errors, raw } = parseFormData(loginSchema, await request.formData());
 
-		// validate with zod
-		const validateResult = loginSchema.safeParse(data);
-
-		if (!validateResult.success) {
-			return fail(400, {
-				errors: flattenError(validateResult.error).fieldErrors,
-				data
-			});
-		}
+		if (!data) return fail(400, { errors, data: raw });
 
 		try {
-			await login(validateResult.data, fetch);
+			await login(data, fetch);
 
 			const to = url.searchParams.has('redirect') ? `${url.searchParams.get('redirect')}` : '/';
 

@@ -1,27 +1,19 @@
-import { flattenError } from 'zod';
 import { fail, redirect } from '@sveltejs/kit';
 
 import type { Actions } from './$types';
 import { register } from '$lib/api/auth';
 import { APIError } from '$lib/api/client';
 import { registerSchema } from '$lib/schema/auth';
+import { parseFormData } from '$lib/utils/form';
 
 export const actions = {
 	default: async ({ request, url, fetch }) => {
-		const formData = await request.formData();
-		const data = Object.fromEntries(formData);
+		const { data, errors, raw } = parseFormData(registerSchema, await request.formData());
 
-		const validateResult = registerSchema.safeParse(data);
-
-		if (!validateResult.success) {
-			return fail(400, {
-				errors: flattenError(validateResult.error).fieldErrors,
-				data
-			});
-		}
+		if (!data) return fail(400, { errors, data: raw });
 
 		try {
-			await register(validateResult.data, fetch);
+			await register(data, fetch);
 
 			const to = url.searchParams.has('redirect') ? `${url.searchParams.get('redirect')}` : '/';
 

@@ -9,6 +9,7 @@
 	import { format } from 'date-fns';
 	import { tick } from 'svelte';
 	import { toast } from 'svelte-sonner';
+	import CommentEditor from './CommentEditor.svelte';
 
 	const MAX_LENGTH = CONSTANTS.COMMENT.MAX_LENGTH;
 
@@ -121,25 +122,15 @@
 			</div>
 		{/if}
 
-		<div
-			class="overflow-hidden rounded-md border border-border transition-colors focus-within:border-foreground/30"
+		<CommentEditor
+			bind:value={content}
+			bind:textareaEl={textarea}
+			maxLength={MAX_LENGTH}
+			{remaining}
+			placeholder={authenticated ? 'What are your thoughts?' : 'Log in to leave a comment'}
+			disabled={!authenticated || submitting}
 		>
-			<textarea
-				bind:this={textarea}
-				bind:value={content}
-				name="content"
-				placeholder={authenticated ? 'What are your thoughts?' : 'Log in to leave a comment'}
-				maxlength={MAX_LENGTH}
-				disabled={!authenticated || submitting}
-				class="w-full resize-none bg-transparent px-4 py-3 text-sm leading-relaxed text-foreground placeholder:text-muted-foreground/50 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
-				rows={3}
-			></textarea>
-
-			<div class="flex items-center justify-between border-t border-border bg-muted/30 px-3 py-2">
-				<span class="text-xs {remaining === 0 ? 'text-destructive' : 'text-muted-foreground'}">
-					{remaining} left
-				</span>
-
+			{#snippet actions()}
 				{#if authenticated}
 					<button
 						type="submit"
@@ -156,8 +147,8 @@
 						Login to comment
 					</a>
 				{/if}
-			</div>
-		</div>
+			{/snippet}
+		</CommentEditor>
 
 		{#if form?.errors?.content}
 			<p class="mt-1.5 text-xs text-destructive">{form.errors.content[0]}</p>
@@ -169,7 +160,6 @@
 		<ul class="space-y-0">
 			{#each post.comments as comment (comment.id)}
 				<li class="border-t border-border py-6">
-					<!-- <div class="flex items-start gap-3"> -->
 					<div class="min-w-0 flex-1">
 						<!-- Head row -->
 						<div class="mb-1.5 flex items-baseline justify-between gap-2">
@@ -181,7 +171,7 @@
 									/>
 								{:else}
 									<div
-										class="justify-content flex size-7 shrink-0 items-center rounded-full border border-border bg-muted/50 text-[11px] font-medium text-muted-foreground"
+										class="flex size-7 shrink-0 items-center justify-center rounded-full border border-border bg-muted/50 text-[11px] font-medium text-muted-foreground"
 									>
 										?
 									</div>
@@ -216,7 +206,7 @@
 							<p class="foreground ml-9 text-sm leading-relaxed text-muted-foreground">
 								{comment.content}
 							</p>
-							<!-- Edit mode -->
+						<!-- Edit mode -->
 						{:else}
 							<form
 								action="?/editComment"
@@ -226,29 +216,14 @@
 							>
 								<input type="hidden" name="commentId" value={comment.id} />
 
-								<div
-									class="overflow-hidden rounded-md border border-border transition-colors focus-within:border-foreground/30"
+								<CommentEditor
+									bind:value={editContent}
+									maxLength={MAX_LENGTH}
+									remaining={editRemaining}
+									id="edit-textarea-{comment.id}"
+									disabled={editSubmitting}
 								>
-									<textarea
-										id="edit-textarea-{comment.id}"
-										bind:value={editContent}
-										name="content"
-										maxlength={MAX_LENGTH}
-										disabled={editSubmitting}
-										rows={3}
-										class="w-full resize-none bg-transparent px-3 py-2.5 text-sm leading-relaxed text-foreground focus:outline-none disabled:opacity-50"
-									></textarea>
-
-									<div
-										class="flex items-center justify-between border-t border-border bg-muted/30 px-3 py-2"
-									>
-										<span
-											class="text-xs {editRemaining === 0
-												? 'text-destructive'
-												: 'text-muted-foreground'}"
-										>
-											{editRemaining} left
-										</span>
+									{#snippet actions()}
 										<div class="flex items-center gap-2">
 											<button
 												type="button"
@@ -268,12 +243,11 @@
 												{editSubmitting ? 'Saving...' : 'Save'}
 											</button>
 										</div>
-									</div>
-								</div>
+									{/snippet}
+								</CommentEditor>
 							</form>
 						{/if}
 					</div>
-					<!-- </div> -->
 				</li>
 			{/each}
 		</ul>

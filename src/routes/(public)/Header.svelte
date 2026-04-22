@@ -18,6 +18,7 @@
 	} from '@lucide/svelte';
 
 	import Avatar from '$lib/components/Avatar.svelte';
+	import HeaderShell from '$lib/components/HeaderShell.svelte';
 	import type { AuthResultUser } from '$lib/types/data';
 	import { fade, slide } from 'svelte/transition';
 
@@ -28,7 +29,6 @@
 	let { user }: Props = $props();
 	let authenticated = $derived(!!user);
 
-	// let redirect = $derived(page.url.pathname + page.url.hash);
 	let redirect = $derived(page.url.pathname + page.url.hash + page.url.search);
 
 	// Search state
@@ -65,8 +65,6 @@
 	let debounceTimer: ReturnType<typeof setTimeout>;
 
 	function handleSearchInput() {
-		console.log({ searchValue });
-
 		clearTimeout(debounceTimer);
 
 		debounceTimer = setTimeout(() => syncUrl(searchValue), 300);
@@ -96,12 +94,8 @@
 	});
 </script>
 
-<header
-	bind:this={headerEl}
-	class="sticky top-0 z-20 w-full border-b border-border bg-background/80 backdrop-blur"
->
-	<div class="relative mx-auto flex h-14 w-full max-w-2xl items-center justify-between px-6">
-		<!-- Brand -->
+<HeaderShell bind:el={headerEl}>
+	<!-- Brand -->
 		{#if !searchOpen}
 			<div
 				class="flex w-full items-center justify-between transition-opacity duration-200"
@@ -230,5 +224,4 @@
 				</DropdownMenu.Root>
 			</div>
 		{/if}
-	</div>
-</header>
+</HeaderShell>
