@@ -23,7 +23,7 @@
 
 <div class="w-full px-6 pb-16">
 	<!-- Back link -->
-	<div class="border-b border-border py-3.5">
+	<div class="py-3">
 		<a
 			href="/"
 			class="flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
