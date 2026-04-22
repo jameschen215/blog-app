@@ -34,7 +34,8 @@
 					size="icon"
 					href="/dashboard/posts/new"
 					class="cursor-pointer rounded-full"
-					aria-label="New post"
+					aria-label="Write new post"
+					title="Write new post"
 				>
 					<SquarePen class="size-[1.1rem]" strokeWidth={1.5} />
 				</Button>
@@ -52,7 +53,7 @@
 							>
 								<Avatar
 									username={user!.username}
-									className="w-full h-full group-hover:border-transparent"
+									className="size-8 group-hover:border-transparent"
 								/>
 							</Button>
 						{/snippet}
