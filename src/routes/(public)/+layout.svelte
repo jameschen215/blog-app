@@ -1,5 +1,5 @@
 <script lang="ts">
-	import Header from '../Header.svelte';
+	import Header from './Header.svelte';
 
 	let { children, data } = $props();
 </script>

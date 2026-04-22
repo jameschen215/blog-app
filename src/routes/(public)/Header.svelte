@@ -6,7 +6,16 @@
 
 	import Button from '$lib/components/ui/button/button.svelte';
 	import * as DropdownMenu from '$lib/components/ui/dropdown-menu/index.js';
-	import { Search, SquarePen, X, Menu, LogIn, LogOut, UserPlus } from '@lucide/svelte';
+	import {
+		Search,
+		SquarePen,
+		X,
+		Menu,
+		LogIn,
+		LogOut,
+		UserPlus,
+		LayoutDashboard
+	} from '@lucide/svelte';
 
 	import Avatar from '$lib/components/Avatar.svelte';
 	import type { AuthResultUser } from '$lib/types/data';
@@ -169,7 +178,10 @@
 								class="group cursor-pointer rounded-full px-0!"
 							>
 								{#if authenticated}
-									<Avatar username={user!.username} className="group-hover:border-transparent" />
+									<Avatar
+										username={user!.username}
+										className="w-full h-full group-hover:border-transparent"
+									/>
 								{:else}
 									<Menu class="size-[1.1rem]" />
 								{/if}
@@ -185,6 +197,10 @@
 
 						<DropdownMenu.Group class="space-y-0.5">
 							{#if authenticated}
+								<DropdownMenu.Item class="cursor-pointer" onclick={() => goto('/dashboard')}>
+									<LayoutDashboard class="size-4" /> Dashboard
+								</DropdownMenu.Item>
+
 								<form action="/auth/logout" method="post" use:enhance>
 									<DropdownMenu.Item class="w-full cursor-pointer">
 										{#snippet child({ props })}
