@@ -52,7 +52,7 @@
 			editorProps: {
 				attributes: {
 					class:
-						'tiptap prose prose-sm sm:prose lg:prose-lg xl:prose-2xl max-w-none w-full px-3 focus:outline-none'
+						'tiptap prose prose-zinc dark:prose-invert max-w-none w-full px-3 focus:outline-none'
 				}
 			},
 			onTransaction: ({ editor }) => {
@@ -73,11 +73,11 @@
 
 <!-- Toolbar -->
 {#if editor}
-	<div class="border-border flex flex-wrap gap-1 border-b px-3 py-2">
+	<div class="flex shrink-0 flex-wrap gap-1 border-b border-border px-3 py-2">
 		<button
 			type="button"
 			onclick={() => editor?.chain().focus().toggleBold().run()}
-			class="font-roboto hover:bg-accent cursor-pointer rounded-sm px-2 py-1 text-sm"
+			class="cursor-pointer rounded-sm px-2 py-1 font-roboto text-sm hover:bg-accent"
 			class:bg-accent={activeFormats.bold}
 		>
 			<Bold size={16} />
@@ -85,7 +85,7 @@
 		<button
 			type="button"
 			onclick={() => editor?.chain().focus().toggleItalic().run()}
-			class="font-roboto hover:bg-accent cursor-pointer rounded-sm px-2 py-1 text-sm italic"
+			class="cursor-pointer rounded-sm px-2 py-1 font-roboto text-sm italic hover:bg-accent"
 			class:bg-accent={activeFormats.italic}
 		>
 			<Italic size={16} />
@@ -94,7 +94,7 @@
 		<button
 			type="button"
 			onclick={() => editor?.chain().focus().toggleCodeBlock().run()}
-			class="font-roboto hover:bg-accent hidden cursor-pointer rounded-sm px-2 py-1 text-sm sm:block"
+			class="hidden cursor-pointer rounded-sm px-2 py-1 font-roboto text-sm hover:bg-accent sm:block"
 			class:bg-accent={activeFormats.codeBlock}
 		>
 			<CodeXml size={18} />
@@ -103,7 +103,7 @@
 		<button
 			type="button"
 			onclick={() => editor?.chain().focus().toggleBulletList().run()}
-			class="font-roboto hover:bg-accent cursor-pointer rounded-sm px-2 py-1 text-sm"
+			class="cursor-pointer rounded-sm px-2 py-1 font-roboto text-sm hover:bg-accent"
 			class:bg-accent={activeFormats.bulletList}
 		>
 			<List strokeWidth={1.5} size={20} />
@@ -111,7 +111,7 @@
 		<button
 			type="button"
 			onclick={() => editor?.chain().focus().toggleOrderedList().run()}
-			class="font-roboto hover:bg-accent cursor-pointer rounded-sm px-2 py-1 text-sm"
+			class="cursor-pointer rounded-sm px-2 py-1 font-roboto text-sm hover:bg-accent"
 			class:bg-accent={activeFormats.orderedList}
 		>
 			<ListOrdered strokeWidth={1.5} size={20} />
@@ -119,7 +119,7 @@
 		<button
 			type="button"
 			onclick={() => editor?.chain().focus().toggleBlockquote().run()}
-			class="font-roboto hover:bg-accent hidden cursor-pointer rounded-sm px-2 py-1 text-sm sm:block"
+			class="hidden cursor-pointer rounded-sm px-2 py-1 font-roboto text-sm hover:bg-accent sm:block"
 			class:bg-accent={activeFormats.blockquote}
 		>
 			<Quote strokeWidth={1.5} size={18} />
@@ -127,13 +127,13 @@
 
 		<div class="ml-auto flex items-center gap-1">
 			{#if lastSaved}
-				<span class="text-muted-foreground/60 flex items-center text-xs">Saved</span>
+				<span class="flex items-center text-xs text-muted-foreground/60">Saved</span>
 			{/if}
 			<button
 				type="button"
 				onclick={saveDraft}
 				disabled={disableSave}
-				class="font-roboto not-disabled:hover:bg-accent disabled:text-muted-foreground cursor-pointer rounded-sm px-2 py-1 text-sm disabled:cursor-default"
+				class="cursor-pointer rounded-sm px-2 py-1 font-roboto text-sm not-disabled:hover:bg-accent disabled:cursor-default disabled:text-muted-foreground"
 			>
 				<Save strokeWidth={1.5} size={20} />
 			</button>
@@ -143,7 +143,7 @@
 
 <!-- Editor area -->
 <div
-	class="min-h-120 w-full cursor-text py-2"
+	class="flex-1 cursor-text overflow-y-auto px-3 py-2"
 	bind:this={element}
 	role="textbox"
 	tabindex="0"

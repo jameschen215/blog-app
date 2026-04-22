@@ -284,6 +284,11 @@ You can preview the production build with `npm run preview`.
 
 > To deploy your app, you may need to install an [adapter](https://svelte.dev/docs/kit/adapters) for your target environment.
 
+## Handy copy
+
+<script lang="ts">
+</script>
+
 ```
 
 # src/app.d.ts
@@ -528,8 +533,20 @@ export function apiDelete<T>(endpoint: string, customFetch = fetch, options?: Re
 # src/lib/api/post.ts
 
 ```ts
+// PATCH for $lib/api/post.ts
+// Two fixes:
+//
+// 1. getPosts — search param was being appended with key 'limit' instead of 'search':
+//
+//   WRONG:  queryParams.append('limit', params.search);
+//   RIGHT:  queryParams.append('search', params.search);
+//
+// 2. getPostsByAuthor — wrong return type (PostsResult) and wrong signature.
+//    The server returns { user, posts } not { posts, pagination }.
+//    Update the function to:
+
 import { apiDelete, apiGet, apiPost, apiPut } from '$lib/api/client';
-import type { PostDetailResult, PostsResult, PostWithAuthor } from '$lib/types/data';
+import type { PostDetailResult, PostsResult, PostWithAuthor, UserResult } from '$lib/types/data';
 
 interface PaginationParams {
 	page?: number;
@@ -543,17 +560,9 @@ export async function getPosts(
 ): Promise<PostsResult> {
 	const queryParams = new URLSearchParams();
 
-	if (params.page) {
-		queryParams.append('page', params.page.toString());
-	}
-
-	if (params.limit) {
-		queryParams.append('limit', params.limit.toString());
-	}
-
-	if (params.search) {
-		queryParams.append('limit', params.search);
-	}
+	if (params.page) queryParams.append('page', params.page.toString());
+	if (params.limit) queryParams.append('limit', params.limit.toString());
+	if (params.search) queryParams.append('search', params.search); // fixed: was 'limit'
 
 	const query = queryParams.toString();
 	const endpoint = query ? `/api/posts?${query}` : '/api/posts';
@@ -565,27 +574,8 @@ export async function getPost(id: number, customFetch = fetch): Promise<PostDeta
 	return apiGet<PostDetailResult>(`/api/posts/${id}`, customFetch);
 }
 
-export async function getPostsByAuthor(
-	params: PaginationParams,
-	authorId: number,
-	customFetch = fetch
-): Promise<PostsResult> {
-	const queryParams = new URLSearchParams();
-
-	if (params.page) {
-		queryParams.append('page', params.page.toString());
-	}
-
-	if (params.limit) {
-		queryParams.append('limit', params.limit.toString());
-	}
-
-	const query = queryParams.toString();
-	const endpoint = query
-		? `/api/posts/authors/${authorId}?${query}`
-		: `/api/posts/authors/${authorId}`;
-
-	return apiGet<PostsResult>(endpoint, customFetch);
+export async function getPostsByAuthor(authorId: number, customFetch = fetch): Promise<UserResult> {
+	return apiGet<UserResult>(`/api/posts/authors/${authorId}`, customFetch);
 }
 
 export async function togglePostPublish(id: number, customFetch = fetch): Promise<PostWithAuthor> {
@@ -611,15 +601,11 @@ export function updatePost(
 	return apiPut<{ post: PostWithAuthor }>(`/api/posts/${id}`, data, customFetch);
 }
 
-export async function likePost(id: number, customFetch = fetch) {
-	return apiPost(`/api/posts/${id}/like`, undefined, customFetch);
-}
-
 export function createComment(postId: number, content: string, customFetch = fetch) {
 	return apiPost(`/api/posts/${postId}/comments`, { content }, customFetch);
 }
 
-export async function updateComment(
+export function updateComment(
 	postId: number,
 	commentId: number,
 	content: string,
@@ -782,185 +768,6 @@ export function deleteComment(postId: number, commentId: number, customFetch = f
 		</Pagination.Content>
 	{/snippet}
 </Pagination.Root>
-
-```
-
-# src/lib/components/Tiptap.svelte
-
-```svelte
-<!-- $lib/components/Tiptap.svelte -->
-
-<script lang="ts">
-	import { Editor } from '@tiptap/core';
-	import { onMount, onDestroy } from 'svelte';
-	import { StarterKit } from '@tiptap/starter-kit';
-	import { Placeholder } from '@tiptap/extension-placeholder';
-	import { Bold, CodeXml, Italic, List, ListOrdered, Quote, Save } from '@lucide/svelte';
-
-	interface Props {
-		content: string;
-		lastSaved?: string | null;
-		disableSave: boolean;
-		onUpdate?: (html: string) => void;
-		saveDraft?: () => void;
-	}
-
-	let { content, lastSaved = null, disableSave, onUpdate, saveDraft }: Props = $props();
-
-	let element = $state<HTMLDivElement>();
-	let editor = $state<Editor | null>(null);
-	let activeFormats = $state({
-		bold: false,
-		italic: false,
-		codeBlock: false,
-		bulletList: false,
-		orderedList: false,
-		blockquote: false
-	});
-
-	function syncActiveFormats(currentEditor: Editor | null) {
-		if (!currentEditor) return;
-
-		queueMicrotask(() => {
-			activeFormats = {
-				bold: currentEditor.isActive('bold'),
-				italic: currentEditor.isActive('italic'),
-				codeBlock: currentEditor.isActive('codeBlock'),
-				bulletList: currentEditor.isActive('bulletList'),
-				orderedList: currentEditor.isActive('orderedList'),
-				blockquote: currentEditor.isActive('blockquote')
-			};
-		});
-	}
-
-	onMount(() => {
-		editor = new Editor({
-			element: element!,
-			extensions: [StarterKit, Placeholder.configure({ placeholder: 'New blog content here...' })],
-			content,
-			autofocus: true,
-			editorProps: {
-				attributes: {
-					class:
-						'tiptap prose prose-sm sm:prose lg:prose-lg xl:prose-2xl max-w-none w-full px-3 focus:outline-none'
-				}
-			},
-			onTransaction: ({ editor }) => {
-				syncActiveFormats(editor);
-			},
-			onUpdate: ({ editor }) => {
-				onUpdate?.(editor.getHTML());
-			}
-		});
-
-		syncActiveFormats(editor);
-	});
-
-	onDestroy(() => {
-		editor?.destroy();
-	});
-</script>
-
-<!-- Toolbar -->
-{#if editor}
-	<div class="border-border flex flex-wrap gap-1 border-b px-3 py-2">
-		<button
-			type="button"
-			onclick={() => editor?.chain().focus().toggleBold().run()}
-			class="font-roboto hover:bg-accent cursor-pointer rounded-sm px-2 py-1 text-sm"
-			class:bg-accent={activeFormats.bold}
-		>
-			<Bold size={16} />
-		</button>
-		<button
-			type="button"
-			onclick={() => editor?.chain().focus().toggleItalic().run()}
-			class="font-roboto hover:bg-accent cursor-pointer rounded-sm px-2 py-1 text-sm italic"
-			class:bg-accent={activeFormats.italic}
-		>
-			<Italic size={16} />
-		</button>
-
-		<button
-			type="button"
-			onclick={() => editor?.chain().focus().toggleCodeBlock().run()}
-			class="font-roboto hover:bg-accent hidden cursor-pointer rounded-sm px-2 py-1 text-sm sm:block"
-			class:bg-accent={activeFormats.codeBlock}
-		>
-			<CodeXml size={18} />
-		</button>
-
-		<button
-			type="button"
-			onclick={() => editor?.chain().focus().toggleBulletList().run()}
-			class="font-roboto hover:bg-accent cursor-pointer rounded-sm px-2 py-1 text-sm"
-			class:bg-accent={activeFormats.bulletList}
-		>
-			<List strokeWidth={1.5} size={20} />
-		</button>
-		<button
-			type="button"
-			onclick={() => editor?.chain().focus().toggleOrderedList().run()}
-			class="font-roboto hover:bg-accent cursor-pointer rounded-sm px-2 py-1 text-sm"
-			class:bg-accent={activeFormats.orderedList}
-		>
-			<ListOrdered strokeWidth={1.5} size={20} />
-		</button>
-		<button
-			type="button"
-			onclick={() => editor?.chain().focus().toggleBlockquote().run()}
-			class="font-roboto hover:bg-accent hidden cursor-pointer rounded-sm px-2 py-1 text-sm sm:block"
-			class:bg-accent={activeFormats.blockquote}
-		>
-			<Quote strokeWidth={1.5} size={18} />
-		</button>
-
-		<div class="ml-auto flex items-center gap-1">
-			{#if lastSaved}
-				<span class="text-muted-foreground/60 flex items-center text-xs">Saved</span>
-			{/if}
-			<button
-				type="button"
-				onclick={saveDraft}
-				disabled={disableSave}
-				class="font-roboto not-disabled:hover:bg-accent disabled:text-muted-foreground cursor-pointer rounded-sm px-2 py-1 text-sm disabled:cursor-default"
-			>
-				<Save strokeWidth={1.5} size={20} />
-			</button>
-		</div>
-	</div>
-{/if}
-
-<!-- Editor area -->
-<div
-	class="min-h-120 w-full cursor-text py-2"
-	bind:this={element}
-	role="textbox"
-	tabindex="0"
-	onclick={() => editor?.commands.focus()}
-	onkeydown={(e) => {
-		if (e.key === 'Enter' || e.key === ' ') {
-			editor?.commands.focus();
-		}
-	}}
-></div>
-
-<style>
-	:global(.tiptap p.is-editor-empty:first-child::before) {
-		content: attr(data-placeholder);
-		color: var(--muted-foreground);
-		font-weight: 300;
-		float: left;
-		pointer-events: none;
-		height: 0;
-	}
-
-	:global(.tiptap) {
-		font-size: 16px;
-		font-family: 'Roboto', sans-serif;
-		line-height: 1.75;
-	}
-</style>
 
 ```
 
@@ -2725,6 +2532,56 @@ export { default as Toaster } from "./sonner.svelte";
 
 ```
 
+# src/lib/components/ui/switch/index.ts
+
+```ts
+import Root from "./switch.svelte";
+
+export {
+	Root,
+	//
+	Root as Switch,
+};
+
+```
+
+# src/lib/components/ui/switch/switch.svelte
+
+```svelte
+<script lang="ts">
+	import { Switch as SwitchPrimitive } from "bits-ui";
+	import { cn, type WithoutChildrenOrChild } from "$lib/utils/shadcn.js";
+
+	let {
+		ref = $bindable(null),
+		class: className,
+		checked = $bindable(false),
+		size = "default",
+		...restProps
+	}: WithoutChildrenOrChild<SwitchPrimitive.RootProps> & {
+		size?: "sm" | "default";
+	} = $props();
+</script>
+
+<SwitchPrimitive.Root
+	bind:ref
+	bind:checked
+	data-slot="switch"
+	data-size={size}
+	class={cn(
+		"data-checked:bg-primary data-unchecked:bg-input focus-visible:border-ring focus-visible:ring-ring/50 aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive dark:aria-invalid:border-destructive/50 dark:data-unchecked:bg-input/80 shrink-0 rounded-full border border-transparent focus-visible:ring-3 aria-invalid:ring-3 data-[size=default]:h-[18.4px] data-[size=default]:w-[32px] data-[size=sm]:h-[14px] data-[size=sm]:w-[24px] peer group/switch relative inline-flex items-center transition-all outline-none after:absolute after:-inset-x-3 after:-inset-y-2 data-disabled:cursor-not-allowed data-disabled:opacity-50",
+		className
+	)}
+	{...restProps}
+>
+	<SwitchPrimitive.Thumb
+		data-slot="switch-thumb"
+		class="bg-background dark:data-unchecked:bg-foreground dark:data-checked:bg-primary-foreground rounded-full group-data-[size=default]/switch:size-4 group-data-[size=sm]/switch:size-3 group-data-[size=default]/switch:data-checked:translate-x-[calc(100%-2px)] group-data-[size=sm]/switch:data-checked:translate-x-[calc(100%-2px)] group-data-[size=default]/switch:data-unchecked:translate-x-0 group-data-[size=sm]/switch:data-unchecked:translate-x-0 pointer-events-none block ring-0 transition-transform rtl:data-[state=checked]:translate-x-[calc(-100%)]"
+	/>
+</SwitchPrimitive.Root>
+
+```
+
 # src/lib/constants/index.ts
 
 ```ts
@@ -2900,7 +2757,6 @@ export type PostsResult = {
 export type UserResult = {
 	user: Pick<User, 'id' | 'username' | 'role'>;
 	posts: PostWithAuthor[];
-	pagination: PaginationMeta;
 };
 
 export type PostDetailResult = { post: PostDetail };
@@ -2979,6 +2835,22 @@ export function getReadingTime(content: string): string {
 	return `${minutes} min read`;
 }
 
+export function getExcerpt(content: string): string {
+	return content.replace(/<[^>]*>/g, '').trim();
+}
+
+const THUMBNAIL_COLORS = [
+	'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-200',
+	'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200',
+	'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200',
+	'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-200',
+	'bg-violet-100 text-violet-800 dark:bg-violet-950 dark:text-violet-200'
+];
+
+export function getThumbnailColor(title: string): string {
+	return THUMBNAIL_COLORS[title.charCodeAt(0) % THUMBNAIL_COLORS.length];
+}
+
 ```
 
 # src/lib/utils/sanitize.ts
@@ -3040,120 +2912,1454 @@ export type WithElementRef<T, U extends HTMLElement = HTMLElement> = T & { ref?:
 
 ```
 
-# src/routes/_components/ArticleCard.svelte
+# src/routes/(dashboard)/+layout.server.ts
+
+```ts
+import { redirect } from '@sveltejs/kit';
+
+export async function load({ locals, url }) {
+	if (!locals.user) {
+		redirect(302, `/auth/login?redirect=${encodeURIComponent(url.pathname)}`);
+	}
+}
+
+```
+
+# src/routes/(dashboard)/+layout.svelte
+
+```svelte
+<script lang="ts">
+	import { enhance } from '$app/forms';
+	import { goto } from '$app/navigation';
+	import type { LayoutProps } from '../$types';
+
+	import Avatar from '$lib/components/Avatar.svelte';
+	import Button from '$lib/components/ui/button/button.svelte';
+	import { LayoutDashboard, LogOut, SquarePen } from '@lucide/svelte';
+	import * as DropdownMenu from '$lib/components/ui/dropdown-menu';
+	import LoadingSpinner from '$lib/components/LoadingSpinner.svelte';
+
+	let { children, data }: LayoutProps = $props();
+
+	let user = $derived(data.user);
+</script>
+
+<div class="flex min-h-screen flex-col items-center">
+	<!-- Header -->
+	<header class="sticky top-0 z-20 w-full border-b border-border bg-background/80 backdrop-blur">
+		<div class="mx-auto flex h-14 w-full max-w-4xl items-center justify-between px-6">
+			<!-- Brand -->
+			<a
+				href="/dashboard"
+				class="font-anton text-xl tracking-normal text-foreground transition-colors hover:opacity-70"
+			>
+				The Blog
+			</a>
+
+			<!-- Right actions -->
+			<div class="flex items-center gap-1">
+				<!-- New post -->
+				<Button
+					variant="ghost"
+					size="icon"
+					href="/dashboard/posts/new"
+					class="cursor-pointer rounded-full"
+					aria-label="New post"
+				>
+					<SquarePen class="size-[1.1rem]" strokeWidth={1.5} />
+				</Button>
+
+				<!-- Avatar dropdown -->
+				<DropdownMenu.Root>
+					<DropdownMenu.Trigger>
+						{#snippet child({ props })}
+							<Button
+								{...props}
+								variant="ghost"
+								size="icon"
+								aria-label="Menu"
+								class="group cursor-pointer rounded-full px-0!"
+							>
+								<Avatar
+									username={user!.username}
+									className="w-full h-full group-hover:border-transparent"
+								/>
+							</Button>
+						{/snippet}
+					</DropdownMenu.Trigger>
+
+					<DropdownMenu.Content class="w-44 rounded-sm p-2" align="end">
+						<DropdownMenu.Label class="text-xs">{user!.username}</DropdownMenu.Label>
+						<DropdownMenu.Separator class="mb-1" />
+
+						<DropdownMenu.Group class="space-y-0.5">
+							<DropdownMenu.Item class="cursor-pointer" onclick={() => goto('/')}>
+								<LayoutDashboard class="size-4" /> Public site
+							</DropdownMenu.Item>
+
+							<form action="/auth/logout" method="post" use:enhance>
+								<DropdownMenu.Item class="w-full cursor-pointer">
+									{#snippet child({ props })}
+										<button type="submit" {...props}>
+											<LogOut class="size-4" /> Logout
+										</button>
+									{/snippet}
+								</DropdownMenu.Item>
+							</form>
+						</DropdownMenu.Group>
+					</DropdownMenu.Content>
+				</DropdownMenu.Root>
+			</div>
+		</div>
+	</header>
+
+	<LoadingSpinner />
+
+	<main class="mx-auto w-full max-w-4xl flex-1">
+		{@render children()}
+	</main>
+</div>
+
+```
+
+# src/routes/(dashboard)/dashboard/_components/EmptyState.svelte
+
+```svelte
+<script lang="ts">
+	import { FileText } from '@lucide/svelte';
+	import Button from '$lib/components/ui/button/button.svelte';
+</script>
+
+<div class="flex flex-col items-center justify-center py-20 text-center">
+	<FileText strokeWidth={1} class="mb-4 size-10 text-muted-foreground opacity-40" />
+
+	<p class="font-ibm text-sm text-muted-foreground">No posts yet.</p>
+
+	<Button
+		variant="ghost"
+		href="/dashboard/posts/new"
+		size="sm"
+		class="mt-6 cursor-pointer rounded-sm"
+	>
+		Write your first post
+	</Button>
+</div>
+
+```
+
+# src/routes/(dashboard)/dashboard/_components/ListHeader.svelte
+
+```svelte
+<div
+	class="hidden border-b border-border bg-muted/40 py-3 text-center sm:grid sm:grid-cols-[1fr_86px_76px_92px] sm:gap-4"
+>
+	<span class="font-ibm text-xs font-semibold tracking-widest text-muted-foreground uppercase">
+		Title
+	</span>
+	<span
+		class="ml-2 text-start font-ibm text-xs font-semibold tracking-widest text-muted-foreground uppercase"
+	>
+		Status
+	</span>
+	<span
+		class="text-center font-ibm text-xs font-semibold tracking-widest text-muted-foreground uppercase"
+	>
+		Updated
+	</span>
+	<span
+		class="text-center font-ibm text-xs font-semibold tracking-widest text-muted-foreground uppercase"
+	>
+		Actions
+	</span>
+</div>
+
+```
+
+# src/routes/(dashboard)/dashboard/_components/ListRow.svelte
 
 ```svelte
 <script lang="ts">
 	import { format } from 'date-fns';
-	import { Heart, MessageCircle } from '@lucide/svelte';
-
-	import * as Card from '$lib/components/ui/card/index.js';
-	import type { PostWithAuthor } from '$lib/types/data';
-
+	import { enhance } from '$app/forms';
 	import { goto } from '$app/navigation';
-	import { formatCompactNum } from '$lib/utils/formatters';
-	import { sanitizeHtml } from '$lib/utils/sanitize';
+	import { fly } from 'svelte/transition';
+	import type { SubmitFunction } from '@sveltejs/kit';
+	import type { PostWithAuthor } from '$lib/types/data';
+	import { Check, Eye, EyeOff, MessageCircleMore, Trash2, X } from '@lucide/svelte';
 
-	let { post, isHome }: { post: PostWithAuthor; isHome: boolean } = $props();
+	interface Props {
+		post: PostWithAuthor;
+		toggleButtonDisabled: boolean;
+		getPublished: (post: PostWithAuthor) => boolean;
+		enhanceDelete: SubmitFunction;
+		enhanceToggle: SubmitFunction;
+	}
 
-	const handleCardClick = (ev: MouseEvent | KeyboardEvent) => {
-		// Ignore if clicking on interactive elements
-		const target = ev.target as HTMLElement;
-		if (target.closest('[data-card-action]')) return;
+	let { post, toggleButtonDisabled, getPublished, enhanceDelete, enhanceToggle }: Props = $props();
 
-		goto(`/posts/${post.id}`);
-	};
-
-	const handleCardKeyDown = (ev: KeyboardEvent) => {
-		if (ev.key === 'Enter' || ev.key === ' ') {
-			ev.preventDefault();
-			handleCardClick(ev);
-		}
-	};
-
-	const handleCardActionClick = (ev: MouseEvent | KeyboardEvent) => {
-		ev.stopPropagation();
-		ev.preventDefault();
-
-		goto(`/users/${post.author.id}`);
-	};
-
-	const handleCardActionKeyDown = (ev: KeyboardEvent) => {
-		if (ev.key === 'Enter' || ev.key === ' ') {
-			handleCardActionClick(ev);
-		}
-	};
+	let deletingPostId = $state<number | null>(null);
 </script>
 
-<Card.Root
-	role="article"
-	tabindex={0}
-	class="my-5 flex cursor-pointer flex-col gap-3 rounded-sm border-none bg-transparent px-4 outline-none"
-	onclick={handleCardClick}
-	onkeydown={handleCardKeyDown}
+<div
+	class="grid grid-cols-3 gap-y-3 py-4 hover:bg-accent/25 sm:grid-cols-[1fr_86px_76px_92px] sm:items-center sm:gap-4"
 >
-	<Card.Header class="flex flex-col px-0">
-		{#if isHome}
-			<Card.Action
-				tabindex={0}
-				class="group"
-				data-card-action
-				onclick={handleCardActionClick}
-				onkeydown={handleCardActionKeyDown}
+	<!-- Title + comment count -->
+	<button
+		class="col-span-3 min-w-0 cursor-pointer text-left sm:col-span-1"
+		onclick={() => goto(`/dashboard/posts/${post.id}`)}
+	>
+		<p class="truncate font-ibm text-sm leading-snug font-semibold">
+			{post.title}
+		</p>
+		<span class="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
+			<MessageCircleMore class="size-3" />
+			{post.commentsCount ?? 0}
+			{post.commentsCount === 1 ? 'comment' : 'comments'}
+		</span>
+	</button>
+
+	<!-- Status badge -->
+	<div class="flex justify-start">
+		{#if getPublished(post)}
+			<span
+				class="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2 py-1 text-xs font-semibold text-emerald-600 dark:text-emerald-400"
 			>
-				<span class="text-foreground/70 italic underline-offset-2 group-hover:underline">
-					{post.author.username}
-				</span>
-			</Card.Action>
+				Published
+			</span>
+		{:else}
+			<span
+				class="inline-flex items-center gap-1.5 rounded-full bg-amber-500/10 px-2 py-1 text-xs font-semibold text-amber-600 dark:text-amber-400"
+			>
+				Draft
+			</span>
 		{/if}
+	</div>
 
-		<Card.Title>
-			{#if isHome}
-				<h1 class="scroll-m-16 font-ibm text-2xl font-semibold tracking-tight sm:text-3xl">
-					{post.title}
-				</h1>
-			{:else}
-				<h2
-					class="scroll-m-16 border-none font-ibm text-2xl font-semibold tracking-tight sm:text-3xl"
+	<!-- Date -->
+	<span class="self-center text-center font-ibm text-xs text-muted-foreground">
+		{format(post.updatedAt, 'yyyy-MM-dd')}
+	</span>
+
+	<!-- Actions -->
+	<div
+		class="relative flex w-full items-center justify-center gap-1 place-self-end sm:place-self-center"
+	>
+		<!-- Publish/unpublish toggle -->
+		<form method="POST" action="?/togglePublish" use:enhance={enhanceToggle}>
+			<input type="hidden" name="id" value={post.id} />
+			<button
+				title={getPublished(post) ? 'Unpublish' : 'Publish'}
+				type="submit"
+				disabled={toggleButtonDisabled}
+				class="cursor-pointer rounded-sm p-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+			>
+				{#if getPublished(post)}
+					<EyeOff class="size-4" />
+				{:else}
+					<Eye class="size-4" />
+				{/if}
+			</button>
+		</form>
+
+		<!-- Delete with inline confirm -->
+		{#if deletingPostId === post.id}
+			<div
+				class="absolute z-10 flex items-center justify-center gap-1 bg-background"
+				in:fly={{ x: 20, duration: 200 }}
+			>
+				<form action="?/deletePost" method="post" use:enhance={enhanceDelete}>
+					<input type="hidden" name="id" value={post.id} />
+					<button
+						title="Confirm delete"
+						type="submit"
+						class="cursor-pointer rounded-sm bg-destructive/10 p-1.5 text-destructive transition-colors hover:bg-destructive/20"
+					>
+						<Check class="size-4" />
+					</button>
+				</form>
+				<button
+					title="Cancel"
+					onclick={() => (deletingPostId = null)}
+					class="cursor-pointer rounded-sm p-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
 				>
-					{post.title}
-				</h2>
-			{/if}
-		</Card.Title>
-	</Card.Header>
+					<X class="size-4" />
+				</button>
+			</div>
+		{:else}
+			<button
+				title="Delete post"
+				onclick={() => (deletingPostId = post.id)}
+				class="cursor-pointer rounded-sm p-1.5 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+			>
+				<Trash2 class="size-4" />
+			</button>
+		{/if}
+	</div>
+</div>
 
-	<Card.Content class="px-0">
-		<div class="prose max-w-none dark:prose-invert">
-			<!-- eslint-disable-next-line svelte/no-at-html-tags -->
-			{@html sanitizeHtml(post.content.split(/\n/)[0])}
+```
+
+# src/routes/(dashboard)/dashboard/_components/PageHeader.svelte
+
+```svelte
+<script lang="ts">
+	import Button from '$lib/components/ui/button/button.svelte';
+	import type { AuthResultUser } from '$lib/types/data';
+	import { SquarePen } from '@lucide/svelte';
+
+	const { user }: { user: AuthResultUser } = $props();
+</script>
+
+<div class="mb-8 flex items-start justify-between gap-4">
+	<div>
+		<h1 class="font-ibm text-3xl font-medium tracking-tight">
+			{user.username}
+		</h1>
+
+		<p class="mt-1 text-sm text-muted-foreground">Manage your posts and moderate comments</p>
+	</div>
+
+	<Button href="/dashboard/posts/new" class="cursor-pointer rounded-sm" variant="default">
+		<SquarePen strokeWidth={1.5} class="size-4" /> Write
+	</Button>
+</div>
+
+```
+
+# src/routes/(dashboard)/dashboard/_components/StatsCards.svelte
+
+```svelte
+<script lang="ts">
+	import type { PostWithAuthor } from '$lib/types/data';
+	import { CircleCheck, Clock, FileText, MessageCircleMore } from '@lucide/svelte';
+
+	interface Props {
+		posts: PostWithAuthor[];
+		getPublished: (post: PostWithAuthor) => boolean;
+	}
+
+	let { posts, getPublished }: Props = $props();
+
+	let totalPosts = $derived(posts.length);
+	let publishedCount = $derived(posts.filter((p) => getPublished(p)).length);
+	let draftCount = $derived(posts.filter((p) => !getPublished(p)).length);
+	let totalComments = $derived(posts.reduce((a, c) => a + (c.commentsCount ?? 0), 0));
+
+	let statsData = $derived([
+		{ label: 'Total posts', value: totalPosts, icon: FileText, accent: 'text-foreground' },
+		{ label: 'Published', value: publishedCount, icon: CircleCheck, accent: 'text-emerald-500' },
+		{ label: 'Drafts', value: draftCount, icon: Clock, accent: 'text-amber-500' },
+		{ label: 'Comments', value: totalComments, icon: MessageCircleMore, accent: 'text-sky-500' }
+	]);
+</script>
+
+<div class="mb-8 grid grid-cols-2 gap-3 sm:grid-cols-4">
+	{#each statsData as stat (stat.label)}
+		<div class="rounded-sm border border-border bg-card p-4">
+			<div class="mb-3 flex items-center justify-between">
+				<span class="font-ibm text-xs font-medium tracking-widest text-muted-foreground uppercase">
+					{stat.label}
+				</span>
+				<stat.icon class="size-4 opacity-70 {stat.accent}" />
+			</div>
+			<span class="font-ibm text-3xl font-bold">{stat.value}</span>
 		</div>
-	</Card.Content>
+	{/each}
+</div>
 
-	<Card.Footer class="flex items-center justify-end gap-5 bg-transparent px-0 text-zinc-500">
-		<div class="text-sm">{format(post.createdAt, 'LLL d')}</div>
+```
 
-		<div class="flex items-center gap-1">
-			<Heart size={16} fill="currentColor" class="text-zinc-400 dark:text-zinc-600" />
-			<span class="text-sm">
-				{formatCompactNum(post.likesCount || 0)}
-			</span>
-		</div>
+# src/routes/(dashboard)/dashboard/+page.server.ts
 
-		<div class="flex items-center gap-1">
-			<MessageCircle size={16} fill="currentColor" class="text-zinc-400 dark:text-zinc-600" />
-			<span class="text-sm">
-				{formatCompactNum(post.commentsCount || 0)}
-			</span>
-		</div>
-	</Card.Footer>
-</Card.Root>
+```ts
+import { fail } from '@sveltejs/kit';
+import type { Actions } from './$types.js';
+
+import { deletePostSchema, togglePublishSchema } from '$lib/schema/post.js';
+import { deletePost, getPostsByAuthor, togglePostPublish } from '$lib/api/post';
+import { handleActionError, handleLoadError } from '$lib/utils/error-handlers';
+
+export async function load({ locals, fetch }) {
+	try {
+		const result = await getPostsByAuthor(locals.user!.id, fetch);
+
+		return {
+			posts: result.posts
+		};
+	} catch (err) {
+		return handleLoadError(err);
+	}
+}
+
+export const actions = {
+	togglePublish: async ({ request, fetch }) => {
+		const formData = await request.formData();
+		const data = Object.fromEntries(formData);
+
+		const validateResult = togglePublishSchema.safeParse(data);
+
+		if (!validateResult.success) {
+			return fail(400);
+		}
+
+		try {
+			await togglePostPublish(validateResult.data.id, fetch);
+			return { success: true };
+		} catch (err) {
+			return handleActionError(err);
+		}
+	},
+	deletePost: async ({ request, fetch }) => {
+		const formData = await request.formData();
+		const data = Object.fromEntries(formData);
+
+		const validateResult = deletePostSchema.safeParse(data);
+
+		if (!validateResult.success) {
+			return fail(400);
+		}
+
+		try {
+			await deletePost(validateResult.data.id, fetch);
+			return { success: true };
+		} catch (err) {
+			return handleActionError(err);
+		}
+	}
+} satisfies Actions;
 
 ```
 
 # src/routes/(dashboard)/dashboard/+page.svelte
 
 ```svelte
-<h1>Dashboard</h1>
+<script lang="ts">
+	import { toast } from 'svelte-sonner';
+	import { flip } from 'svelte/animate';
+	import { cubicOut } from 'svelte/easing';
+	import type { PageProps } from './$types';
+	import { SvelteMap, SvelteSet } from 'svelte/reactivity';
+
+	import type { SubmitFunction } from '@sveltejs/kit';
+	import type { PostWithAuthor } from '$lib/types/data';
+	import ListRow from './_components/ListRow.svelte';
+	import PageHeader from './_components/PageHeader.svelte';
+	import StatsCards from './_components/StatsCards.svelte';
+	import ListHeader from './_components/ListHeader.svelte';
+	import EmptyState from './_components/EmptyState.svelte';
+
+	let { data }: PageProps = $props();
+
+	let posts = $derived(data.posts ?? []);
+
+	// Optimistic UI state
+	let optimisticPublishedMap = new SvelteMap<number, boolean>();
+	let optimisticUpdatedAtMap = new SvelteMap<number, string>();
+	let togglePublishedSubmittingIds = new SvelteSet<number>();
+	let deletingPostIds = new SvelteSet<number>();
+	let deletedPosts = new SvelteMap<number, PostWithAuthor>();
+
+	let sortedPosts = $derived(
+		[...posts].sort((a, b) => {
+			const aPublished = getPublished(a) ? 1 : 0;
+			const bPublished = getPublished(b) ? 1 : 0;
+			if (bPublished !== aPublished) return bPublished - aPublished;
+
+			const dateDiff = new Date(getUpdatedAt(b)).getTime() - new Date(getUpdatedAt(a)).getTime();
+			if (dateDiff !== 0) return dateDiff;
+
+			return a.title.localeCompare(b.title);
+		})
+	);
+
+	function getPublished(post: PostWithAuthor): boolean {
+		const original = optimisticPublishedMap.get(post.id);
+		return original !== undefined ? !original : post.published;
+	}
+
+	function getUpdatedAt(post: PostWithAuthor): string {
+		return optimisticUpdatedAtMap.get(post.id) ?? post.updatedAt;
+	}
+
+	const enhanceToggle: SubmitFunction = ({ formData }) => {
+		const id = Number(formData.get('id'));
+		const post = posts.find((p) => p.id === id);
+		if (!post) return;
+
+		optimisticPublishedMap.set(post.id, post.published);
+		optimisticUpdatedAtMap.set(post.id, new Date().toISOString());
+		togglePublishedSubmittingIds.add(post.id);
+
+		toast.success(`Post ${post.published ? 'unpublished.' : 'published!'}`);
+
+		return async ({ result, update }) => {
+			if (result.type !== 'success') {
+				toast.error('Failed to update publish status.');
+
+				optimisticPublishedMap.delete(post.id);
+				optimisticUpdatedAtMap.delete(post.id);
+				togglePublishedSubmittingIds.delete(post.id);
+
+				return;
+			}
+
+			await update({ reset: false });
+			optimisticPublishedMap.delete(post.id);
+			optimisticUpdatedAtMap.delete(post.id);
+			togglePublishedSubmittingIds.delete(post.id);
+		};
+	};
+
+	const enhanceDelete: SubmitFunction = async ({ formData }) => {
+		const id = Number(formData.get('id'));
+		const post = posts.find((p) => p.id === id);
+		if (!post) return;
+
+		deletedPosts.set(id, post);
+		deletingPostIds.add(id);
+		posts = posts.filter((p) => p.id !== id);
+
+		toast.success('Post deleted.');
+
+		return async ({ result, update }) => {
+			if (result.type !== 'success') {
+				posts = [...posts, deletedPosts.get(id)!];
+
+				toast.error('Failed to delete post.');
+
+				return;
+			}
+
+			await update({ reset: false });
+			deletingPostIds.delete(id);
+			deletedPosts.delete(id);
+		};
+	};
+</script>
+
+<svelte:head>
+	<title>Dashboard - The Blog</title>
+</svelte:head>
+
+<div class="w-full px-6 py-10">
+	<PageHeader user={data.user!} />
+
+	<StatsCards {posts} {getPublished} />
+
+	<div>
+		<ListHeader />
+
+		{#each sortedPosts as post (post.id)}
+			<div
+				class="border-b border-border last:border-b-0"
+				animate:flip={{ duration: 300, easing: cubicOut }}
+			>
+				<ListRow
+					{post}
+					{getPublished}
+					{enhanceDelete}
+					{enhanceToggle}
+					toggleButtonDisabled={togglePublishedSubmittingIds.has(post.id)}
+				/>
+			</div>
+		{/each}
+
+		{#if sortedPosts.length === 0}
+			<EmptyState />
+		{/if}
+	</div>
+</div>
+
+```
+
+# src/routes/(dashboard)/dashboard/posts/[id]/_components/DraftBanner.svelte
+
+```svelte
+<script lang="ts">
+	import { fade } from 'svelte/transition';
+
+	interface Props {
+		restoreDraft: () => void;
+		discardDraft: () => void;
+		mode: 'view' | 'edit';
+	}
+
+	let { restoreDraft, discardDraft, mode = $bindable() }: Props = $props();
+</script>
+
+<div
+	transition:fade={{ duration: 150 }}
+	class="mt-6 flex items-center justify-between rounded-sm border border-amber-500/30 bg-amber-500/10 px-4 py-3"
+>
+	<span class="text-sm text-amber-700 dark:text-amber-400">
+		You have unsaved edits from a previous session.
+	</span>
+	<div class="flex gap-2">
+		<button
+			type="button"
+			onclick={() => {
+				restoreDraft();
+				mode = 'edit';
+			}}
+			class="cursor-pointer rounded-sm px-3 py-1 text-sm font-medium text-amber-700 hover:bg-amber-500/20 dark:text-amber-400"
+		>
+			Resume editing
+		</button>
+		<button
+			type="button"
+			onclick={discardDraft}
+			class="cursor-pointer rounded-sm px-3 py-1 text-sm text-muted-foreground hover:bg-accent"
+		>
+			Discard
+		</button>
+	</div>
+</div>
+
+```
+
+# src/routes/(dashboard)/dashboard/posts/[id]/_components/EditMode.svelte
+
+```svelte
+<script lang="ts">
+	import { enhance } from '$app/forms';
+	import { toast } from 'svelte-sonner';
+	import type { SubmitFunction } from '@sveltejs/kit';
+
+	import { getExcerpt } from '$lib/utils/formatters';
+
+	import TiptapEditor from './TiptapEditor.svelte';
+	import Label from '$lib/components/ui/label/label.svelte';
+	import * as Field from '$lib/components/ui/field/index.js';
+	import Button from '$lib/components/ui/button/button.svelte';
+	import Switch from '$lib/components/ui/switch/switch.svelte';
+
+	type DraftSource = 'server' | 'local';
+	type EditDraft = {
+		title: string;
+		content: string;
+		published: boolean;
+		source: DraftSource;
+		savedAt: string | null;
+	};
+
+	interface FormResult {
+		success?: boolean;
+		message?: string;
+		errors?: Record<string, string[]>;
+		data?: { title: string; content: string; published: boolean };
+	}
+
+	interface Props {
+		form: FormResult | null;
+		mode: 'view' | 'edit';
+		draft: EditDraft;
+		hasChanges: boolean;
+		discardDraft: () => void;
+		saveDraft: () => void;
+		onContentUpdate: (html: string) => void;
+	}
+
+	let {
+		form,
+		mode = $bindable(),
+		draft = $bindable(),
+		hasChanges,
+		discardDraft,
+		saveDraft,
+		onContentUpdate
+	}: Props = $props();
+
+	let submitting = $state(false);
+	let isTitleFocused = $state(false);
+	let hasMeaningfulInput = $derived(
+		draft.title.trim().length > 0 || getExcerpt(draft.content).length > 0
+	);
+
+	const handleSubmit: SubmitFunction = ({ formData }) => {
+		submitting = true;
+		formData.set('content', draft.content);
+		formData.set('published', String(draft.published));
+
+		return async ({ result, update }) => {
+			submitting = false;
+			await update({ reset: false });
+
+			if (result.type === 'success') {
+				mode = 'view';
+				discardDraft();
+				toast.success('Post updated!');
+			}
+		};
+	};
+</script>
+
+<section class="h-[calc(100vh-56px)] w-full">
+	<form method="post" action="?/updatePost" class="space-y-5 py-8" use:enhance={handleSubmit}>
+		<!-- Title input -->
+		<Field.Field>
+			<input
+				name="title"
+				placeholder="Post title"
+				bind:value={draft.title}
+				onfocus={() => (isTitleFocused = true)}
+				onblur={() => (isTitleFocused = false)}
+				class="w-full border-l bg-transparent px-2 font-roboto text-2xl tracking-tight placeholder:text-muted-foreground/40 focus:outline-none {isTitleFocused
+					? 'border-transparent'
+					: 'border-border'}"
+			/>
+			{#if form?.errors?.title}
+				<Field.FieldError>{form.errors.title[0]}</Field.FieldError>
+			{/if}
+		</Field.Field>
+
+		<!-- Tiptap editor -->
+		<Field.Field>
+			<div class="rounded-sm border border-border">
+				<TiptapEditor
+					content={draft.content}
+					lastSaved={draft.savedAt}
+					disableSave={!hasMeaningfulInput}
+					onUpdate={onContentUpdate}
+					{saveDraft}
+				/>
+			</div>
+			{#if form?.errors?.content}
+				<Field.FieldError>{form.errors.content[0]}</Field.FieldError>
+			{/if}
+		</Field.Field>
+
+		<!-- Bottom bar: publish toggle + actions -->
+		<div class="flex items-center justify-between gap-3">
+			<div class="flex items-center gap-3">
+				<Switch
+					bind:checked={draft.published}
+					id="published"
+					disabled={submitting}
+					class="cursor-pointer data-[state=checked]:bg-primary data-[state=unchecked]:bg-input [&_span]:data-[state=checked]:translate-x-[calc(100%-2px)]"
+				/>
+				<Label for="published" class="cursor-pointer text-sm text-muted-foreground">
+					{draft.published ? 'Published' : 'Draft'}
+				</Label>
+			</div>
+
+			<div class="flex items-center gap-2">
+				<Button
+					type="button"
+					variant="outline"
+					class="min-w-22 cursor-pointer rounded-sm"
+					disabled={submitting}
+					onclick={() => (mode = 'view')}
+				>
+					Cancel
+				</Button>
+				<Button
+					type="submit"
+					class="min-w-22 cursor-pointer rounded-sm"
+					disabled={submitting || !hasChanges}
+				>
+					{submitting ? 'Saving...' : 'Save'}
+				</Button>
+			</div>
+		</div>
+	</form>
+</section>
+
+```
+
+# src/routes/(dashboard)/dashboard/posts/[id]/_components/TiptapEditor.svelte
+
+```svelte
+<!-- $lib/components/Tiptap.svelte -->
+
+<script lang="ts">
+	import { Editor } from '@tiptap/core';
+	import { onMount, onDestroy } from 'svelte';
+	import { StarterKit } from '@tiptap/starter-kit';
+	import { Placeholder } from '@tiptap/extension-placeholder';
+	import { Bold, CodeXml, Italic, List, ListOrdered, Quote, Save } from '@lucide/svelte';
+
+	interface Props {
+		content: string;
+		lastSaved?: string | null;
+		disableSave: boolean;
+		onUpdate?: (html: string) => void;
+		saveDraft?: () => void;
+	}
+
+	let { content, lastSaved = null, disableSave, onUpdate, saveDraft }: Props = $props();
+
+	let element = $state<HTMLDivElement>();
+	let editor = $state<Editor | null>(null);
+	let activeFormats = $state({
+		bold: false,
+		italic: false,
+		codeBlock: false,
+		bulletList: false,
+		orderedList: false,
+		blockquote: false
+	});
+
+	function syncActiveFormats(currentEditor: Editor | null) {
+		if (!currentEditor) return;
+
+		queueMicrotask(() => {
+			activeFormats = {
+				bold: currentEditor.isActive('bold'),
+				italic: currentEditor.isActive('italic'),
+				codeBlock: currentEditor.isActive('codeBlock'),
+				bulletList: currentEditor.isActive('bulletList'),
+				orderedList: currentEditor.isActive('orderedList'),
+				blockquote: currentEditor.isActive('blockquote')
+			};
+		});
+	}
+
+	onMount(() => {
+		editor = new Editor({
+			element: element!,
+			extensions: [StarterKit, Placeholder.configure({ placeholder: 'New blog content here...' })],
+			content,
+			autofocus: true,
+			editorProps: {
+				attributes: {
+					class: 'tiptap prose max-w-none w-full px-3 focus:outline-none'
+				}
+			},
+			onTransaction: ({ editor }) => {
+				syncActiveFormats(editor);
+			},
+			onUpdate: ({ editor }) => {
+				onUpdate?.(editor.getHTML());
+			}
+		});
+
+		syncActiveFormats(editor);
+	});
+
+	onDestroy(() => {
+		editor?.destroy();
+	});
+</script>
+
+<!-- Toolbar -->
+{#if editor}
+	<div class="flex flex-wrap gap-1 border-b border-border px-3 py-2">
+		<button
+			type="button"
+			onclick={() => editor?.chain().focus().toggleBold().run()}
+			class="cursor-pointer rounded-sm px-2 py-1 font-roboto text-sm hover:bg-accent"
+			class:bg-accent={activeFormats.bold}
+		>
+			<Bold size={16} />
+		</button>
+		<button
+			type="button"
+			onclick={() => editor?.chain().focus().toggleItalic().run()}
+			class="cursor-pointer rounded-sm px-2 py-1 font-roboto text-sm italic hover:bg-accent"
+			class:bg-accent={activeFormats.italic}
+		>
+			<Italic size={16} />
+		</button>
+
+		<button
+			type="button"
+			onclick={() => editor?.chain().focus().toggleCodeBlock().run()}
+			class="hidden cursor-pointer rounded-sm px-2 py-1 font-roboto text-sm hover:bg-accent sm:block"
+			class:bg-accent={activeFormats.codeBlock}
+		>
+			<CodeXml size={18} />
+		</button>
+
+		<button
+			type="button"
+			onclick={() => editor?.chain().focus().toggleBulletList().run()}
+			class="cursor-pointer rounded-sm px-2 py-1 font-roboto text-sm hover:bg-accent"
+			class:bg-accent={activeFormats.bulletList}
+		>
+			<List strokeWidth={1.5} size={20} />
+		</button>
+		<button
+			type="button"
+			onclick={() => editor?.chain().focus().toggleOrderedList().run()}
+			class="cursor-pointer rounded-sm px-2 py-1 font-roboto text-sm hover:bg-accent"
+			class:bg-accent={activeFormats.orderedList}
+		>
+			<ListOrdered strokeWidth={1.5} size={20} />
+		</button>
+		<button
+			type="button"
+			onclick={() => editor?.chain().focus().toggleBlockquote().run()}
+			class="hidden cursor-pointer rounded-sm px-2 py-1 font-roboto text-sm hover:bg-accent sm:block"
+			class:bg-accent={activeFormats.blockquote}
+		>
+			<Quote strokeWidth={1.5} size={18} />
+		</button>
+
+		<div class="ml-auto flex items-center gap-1">
+			{#if lastSaved}
+				<span class="flex items-center text-xs text-muted-foreground/60">Saved</span>
+			{/if}
+			<button
+				type="button"
+				onclick={saveDraft}
+				disabled={disableSave}
+				class="cursor-pointer rounded-sm px-2 py-1 font-roboto text-sm not-disabled:hover:bg-accent disabled:cursor-default disabled:text-muted-foreground"
+			>
+				<Save strokeWidth={1.5} size={20} />
+			</button>
+		</div>
+	</div>
+{/if}
+
+<!-- Editor area -->
+<div
+	class="min-h-120 w-full cursor-text py-2"
+	bind:this={element}
+	role="textbox"
+	tabindex="0"
+	onclick={() => editor?.commands.focus()}
+	onkeydown={(e) => {
+		if (e.key === 'Enter' || e.key === ' ') {
+			editor?.commands.focus();
+		}
+	}}
+></div>
+
+<style>
+	:global(.tiptap p.is-editor-empty:first-child::before) {
+		content: attr(data-placeholder);
+		color: var(--muted-foreground);
+		font-weight: 300;
+		float: left;
+		pointer-events: none;
+		height: 0;
+	}
+
+	:global(.tiptap) {
+		font-size: 16px;
+		font-family: 'Roboto', sans-serif;
+		line-height: 1.75;
+	}
+</style>
+
+```
+
+# src/routes/(dashboard)/dashboard/posts/[id]/_components/ViewMode.svelte
+
+```svelte
+<script lang="ts">
+	import { format } from 'date-fns';
+	import { toast } from 'svelte-sonner';
+	import { enhance } from '$app/forms';
+	import { slide } from 'svelte/transition';
+	import type { SubmitFunction } from '@sveltejs/kit';
+	import { SvelteMap, SvelteSet } from 'svelte/reactivity';
+
+	import Avatar from '$lib/components/Avatar.svelte';
+	import { sanitizeHtml } from '$lib/utils/sanitize';
+	import Button from '$lib/components/ui/button/button.svelte';
+	import type { CommentWithAuthor, PostDetail } from '$lib/types/data';
+	import { formatCompactNum, getReadingTime } from '$lib/utils/formatters';
+	import { Check, ChevronLeft, Eraser, Heart, MessageSquare, Trash2, X } from '@lucide/svelte';
+
+	interface Props {
+		post: PostDetail;
+		mode: 'view' | 'edit';
+	}
+
+	let { post, mode = $bindable() }: Props = $props();
+
+	// Handle comment moderating state
+	let confirmingDeleteId = $state<number | null>(null);
+	let deletedCommentIds = new SvelteSet<number>();
+	let deletedComments = new SvelteMap<number, CommentWithAuthor>();
+
+	let visibleComments = $derived(post.comments.filter((c) => !deletedCommentIds.has(c.id)));
+
+	const enhanceDeleteComment: SubmitFunction = ({ formData }) => {
+		const commentId = Number(formData.get('commentId'));
+		const comment = post.comments.find((c) => c.id === commentId);
+
+		if (!comment) return;
+
+		// Snapshot for rollback
+		deletedCommentIds.add(commentId);
+		deletedComments.set(commentId, comment);
+		confirmingDeleteId = null;
+		toast.success('Comment deleted.');
+
+		return async ({ result, update }) => {
+			if (result.type !== 'success') {
+				toast.error('Failed to delete comment.');
+			}
+
+			await update({ reset: false });
+
+			// Clean up after response received in case leading to changes
+			// in visibleComments before it should be.
+			deletedComments.delete(commentId);
+			deletedCommentIds.delete(commentId);
+		};
+	};
+</script>
+
+<section class="w-full">
+	<!-- Back link -->
+	<div class="border-b border-border py-3.5">
+		<a
+			href="/dashboard"
+			class="flex items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
+		>
+			<ChevronLeft size={13} /> Dashboard
+		</a>
+	</div>
+
+	<!-- Post header - title, meta, edit button -->
+	<div class="flex justify-between gap-4 py-8">
+		<div class="min-w-0 flex-1">
+			<!-- Published/draft badge -->
+			<div class="mb-3">
+				{#if post.published}
+					<span
+						class="inline-flex items-center rounded-full bg-emerald-500/10 px-2.5 py-1 text-xs font-semibold text-emerald-600 dark:text-emerald-400"
+					>
+						Published
+					</span>
+				{:else}
+					<span
+						class="inline-flex items-center rounded-full bg-amber-500/10 px-2.5 py-1 text-xs font-semibold text-amber-600 dark:text-amber-400"
+					>
+						Draft
+					</span>
+				{/if}
+			</div>
+
+			<h1 class="font-ibm text-3xl leading-snug font-medium tracking-tight text-foreground">
+				{post.title}
+			</h1>
+
+			<!-- Meta row -->
+			<div class="mt-3 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+				<span>{format(post.createdAt, 'MMM d, yyyy')}</span>
+				<span class="text-muted-foreground/40">·</span>
+				<span class="flex items-center gap-1">
+					<Heart size={13} />
+					{formatCompactNum(post.likesCount)}
+				</span>
+				<span class="text-muted-foreground/40">·</span>
+				<span class="flex items-center gap-1">
+					<MessageSquare size={13} />
+					{formatCompactNum(post.commentsCount)}
+				</span>
+				<span class="text-muted-foreground/40">·</span>
+				<span>{getReadingTime(post.content)}</span>
+			</div>
+		</div>
+
+		<!-- Edit button -->
+		<Button
+			variant="outline"
+			onclick={() => (mode = 'edit')}
+			class="mt-1 shrink-0 cursor-pointer rounded-md"
+		>
+			<Eraser class="size-3.5" /> Edit
+		</Button>
+	</div>
+
+	<!-- Content -->
+	<div class="prose max-w-none border-t border-border pt-6 prose-zinc dark:prose-invert">
+		<!-- eslint-disable-next-line svelte/no-at-html-tags -->
+		{@html sanitizeHtml(post.content)}
+	</div>
+
+	<!-- Comments -->
+	<div class="mt-10 border-t border-border pt-6">
+		<h2 class="mb-4 font-ibm text-xl font-medium">
+			Comments ({formatCompactNum(visibleComments.length)})
+		</h2>
+
+		{#if visibleComments.length > 0}
+			<ul>
+				{#each visibleComments as comment (comment.id)}
+					<li class="group border-b border-border py-4 last:border-b-0">
+						<div class="flex justify-between gap-3">
+							<div class="flex min-w-0 flex-1 gap-3">
+								{#if comment.author}
+									<Avatar
+										username={comment.author.username}
+										className="size-7 shrink-0 text-[12px]"
+									/>
+								{:else}
+									<div
+										class="flex size-7 shrink-0 items-center justify-center rounded-full border border-border bg-muted/50 text-[12px] text-muted-foreground"
+									>
+										?
+									</div>
+								{/if}
+
+								<div class="min-w-0 flex-1">
+									<div class="mb-1 flex items-center justify-between">
+										<div class="flex items-baseline gap-2">
+											<span class="text-sm font-medium text-foreground">
+												{comment.author?.username ?? 'Deleted user'}
+											</span>
+											<span class="text-xs text-muted-foreground">
+												{format(comment.createdAt, 'MMM d, yyyy')}
+											</span>
+										</div>
+
+										<!-- Delete with inline confirm -->
+										{#if confirmingDeleteId === comment.id}
+											<div
+												class="flex shrink-0 items-center gap-1"
+												in:slide={{ axis: 'x', duration: 200 }}
+											>
+												<form
+													action="?/deleteComment"
+													method="post"
+													use:enhance={enhanceDeleteComment}
+												>
+													<input type="hidden" name="commentId" value={comment.id} />
+													<button
+														type="submit"
+														title="Confirm delete"
+														class="cursor-pointer rounded-sm bg-destructive/10 p-1.5 text-destructive transition-colors hover:bg-destructive/20"
+													>
+														<Check class="size-3.5" />
+													</button>
+												</form>
+
+												<button
+													type="button"
+													title="Cancel"
+													onclick={() => (confirmingDeleteId = null)}
+													class="cursor-pointer rounded-sm p-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+												>
+													<X class="size-3.5" />
+												</button>
+											</div>
+										{:else}
+											<button
+												type="button"
+												title="Delete comment"
+												onclick={() => (confirmingDeleteId = comment.id)}
+												class="cursor-pointer rounded-sm p-1.5 text-muted-foreground opacity-0 transition-all duration-200 group-focus-within:opacity-100 group-hover:opacity-100 hover:bg-destructive/10 hover:text-destructive"
+											>
+												<Trash2 class="size-3.5" />
+											</button>
+										{/if}
+									</div>
+
+									<div
+										class="prose max-w-none text-sm text-muted-foreground prose-zinc dark:prose-invert"
+									>
+										<!-- eslint-disable-next-line svelte/no-at-html-tags -->
+										{@html sanitizeHtml(comment.content)}
+									</div>
+								</div>
+							</div>
+						</div>
+					</li>
+				{/each}
+			</ul>
+		{:else}
+			<p class="py-8 text-center text-sm text-muted-foreground">No comments yet.</p>
+		{/if}
+	</div>
+</section>
+
+```
+
+# src/routes/(dashboard)/dashboard/posts/[id]/+page.server.ts
+
+```ts
+import { flattenError } from 'zod';
+import { error, fail } from '@sveltejs/kit';
+import type { Actions } from './$types';
+
+import { handleLoadError, handleActionError } from '$lib/utils/error-handlers';
+import { deletePostSchema, togglePublishSchema, updatePostSchema } from '$lib/schema/post';
+import { getPost, updatePost, deletePost, deleteComment, togglePostPublish } from '$lib/api/post';
+
+export async function load({ locals, params, fetch }) {
+	const id = parseInt(params.id);
+
+	if (isNaN(id) || id < 1) {
+		error(400, 'Invalid post ID');
+	}
+
+	try {
+		return await getPost(id, fetch);
+	} catch (err) {
+		return handleLoadError(err);
+	}
+}
+
+export const actions = {
+	updatePost: async ({ request, params, fetch }) => {
+		const id = parseInt(params.id);
+
+		if (isNaN(id) || id < 1) {
+			error(400, 'Invalid post ID');
+		}
+
+		const formData = await request.formData();
+		const data = {
+			title: formData.get('title') as string,
+			content: formData.get('content') as string,
+			published: formData.get('published') === 'true'
+		};
+
+		const validateResult = updatePostSchema.safeParse(data);
+		if (!validateResult.success) {
+			return fail(400, {
+				errors: flattenError(validateResult.error).fieldErrors,
+				data
+			});
+		}
+
+		try {
+			await updatePost(id, validateResult.data, fetch);
+			return { success: true };
+		} catch (err) {
+			return handleActionError(err); // fixed: was missing return
+		}
+	},
+
+	togglePublish: async ({ request, fetch }) => {
+		const formData = await request.formData();
+		const data = Object.fromEntries(formData);
+
+		const validateResult = togglePublishSchema.safeParse(data);
+		if (!validateResult.success) {
+			return fail(400);
+		}
+
+		try {
+			await togglePostPublish(validateResult.data.id, fetch);
+			return { success: true };
+		} catch (err) {
+			return handleActionError(err);
+		}
+	},
+
+	deletePost: async ({ request, fetch }) => {
+		const formData = await request.formData();
+		const data = Object.fromEntries(formData);
+
+		const validateResult = deletePostSchema.safeParse(data);
+		if (!validateResult.success) {
+			return fail(400);
+		}
+
+		try {
+			await deletePost(validateResult.data.id, fetch);
+			return { success: true };
+		} catch (err) {
+			return handleActionError(err);
+		}
+	},
+
+	deleteComment: async ({ request, params, fetch }) => {
+		const formData = await request.formData();
+		const commentId = Number(formData.get('commentId'));
+		const postId = parseInt(params.id);
+
+		if (isNaN(commentId) || commentId < 1) {
+			return fail(400, { message: 'Invalid comment ID' });
+		}
+
+		try {
+			await deleteComment(postId, commentId, fetch);
+			return { success: true };
+		} catch (err) {
+			return handleActionError(err);
+		}
+	}
+} satisfies Actions;
+
+```
+
+# src/routes/(dashboard)/dashboard/posts/[id]/+page.svelte
+
+```svelte
+<script lang="ts">
+	import { toast } from 'svelte-sonner';
+	import type { PageProps } from './$types';
+	import { browser } from '$app/environment';
+
+	import { sanitizeHtml } from '$lib/utils/sanitize';
+
+	import ViewMode from './_components/ViewMode.svelte';
+	import EditMode from './_components/EditMode.svelte';
+	import DraftBanner from './_components/DraftBanner.svelte';
+
+	type DraftSource = 'server' | 'local';
+	type EditDraft = {
+		title: string;
+		content: string;
+		published: boolean;
+		source: DraftSource;
+		savedAt: string | null;
+	};
+
+	const { data, form }: PageProps = $props();
+	const post = $derived(data.post);
+
+	const STORAGE_KEY = $derived(`draft:edit-post:${post.id}`);
+
+	let mode = $state<'view' | 'edit'>('view');
+	let draft = $state<EditDraft>({
+		title: '',
+		content: '',
+		published: false,
+		source: 'server',
+		savedAt: null
+	});
+	let hasDraft = $state(false);
+	let hydratedPostId = $state<number | null>(null);
+
+	let serverSnapshot = $derived({
+		title: post.title,
+		content: sanitizeHtml(post.content),
+		published: post.published
+	});
+
+	let hasChanges = $derived(
+		draft.title !== serverSnapshot.title ||
+			draft.content !== serverSnapshot.content ||
+			draft.published !== serverSnapshot.published
+	);
+
+	function createServerDraft(): EditDraft {
+		return {
+			title: serverSnapshot.title,
+			content: serverSnapshot.content,
+			published: serverSnapshot.published,
+			source: 'server',
+			savedAt: null
+		};
+	}
+
+	function saveDraft() {
+		if (!browser || (!draft.title && !draft.content)) return;
+
+		const now = new Date().toLocaleTimeString();
+		localStorage.setItem(
+			STORAGE_KEY,
+			JSON.stringify({
+				title: draft.title,
+				content: draft.content,
+				published: draft.published,
+				savedAt: now
+			})
+		);
+		draft = { ...draft, source: 'local', savedAt: now };
+
+		toast.success('Draft saved locally!');
+	}
+
+	function loadStoredDraft(): EditDraft | null {
+		if (!browser) return null;
+
+		const saved = localStorage.getItem(STORAGE_KEY);
+		if (!saved) return null;
+
+		try {
+			const parsed = JSON.parse(saved);
+
+			return {
+				title: parsed.title ?? serverSnapshot.title,
+				content: parsed.content ?? serverSnapshot.content,
+				published: parsed.published ?? serverSnapshot.published,
+				source: 'local',
+				savedAt: parsed.savedAt ?? null
+			};
+		} catch {
+			return null;
+		}
+	}
+
+	function restoreDraft() {
+		const storedDraft = loadStoredDraft();
+		if (!storedDraft) return;
+
+		draft = storedDraft;
+		hasDraft = false;
+
+		toast.success('Draft restored.');
+	}
+
+	function clearDraft() {
+		if (!browser) return;
+
+		localStorage.removeItem(STORAGE_KEY);
+		draft = { ...draft, source: 'server', savedAt: null };
+	}
+
+	function discardDraft() {
+		clearDraft();
+		draft = createServerDraft();
+		hasDraft = false;
+	}
+
+	function draftMatchesServer(candidate: EditDraft): boolean {
+		return (
+			candidate.title === serverSnapshot.title &&
+			candidate.content === serverSnapshot.content &&
+			candidate.published === serverSnapshot.published
+		);
+	}
+
+	function handleContentUpdate(html: string) {
+		draft = { ...draft, content: sanitizeHtml(html) };
+	}
+
+	// illustrate this $effect
+	$effect(() => {
+		if (hydratedPostId === post.id) return;
+
+		hydratedPostId = post.id;
+		mode = 'view';
+		draft = createServerDraft();
+
+		const storedDraft = loadStoredDraft();
+		hasDraft = !!storedDraft && !draftMatchesServer(storedDraft);
+	});
+
+	// Auto-save every 30s while editing
+	$effect(() => {
+		if (!browser || mode !== 'edit') return;
+
+		const interval = setInterval(saveDraft, 30000);
+
+		return () => clearInterval(interval);
+	});
+</script>
+
+<svelte:head>
+	<title>{post.title} - Dashboard</title>
+</svelte:head>
+
+<div class="w-full px-6 pb-20">
+	{#if hasDraft}
+		<DraftBanner {restoreDraft} {discardDraft} bind:mode />
+	{/if}
+
+	{#if mode === 'view'}
+		<ViewMode bind:mode {post} />
+	{:else}
+		<EditMode
+			bind:mode
+			bind:draft
+			{form}
+			{discardDraft}
+			{hasChanges}
+			{saveDraft}
+			onContentUpdate={handleContentUpdate}
+		/>
+	{/if}
+</div>
 
 ```
 
@@ -3299,61 +4505,63 @@ export async function load({ url, fetch }) {
 	</div>
 
 	<!-- Post list -->
-	<div class="px-6">
+	<ul class="px-6">
 		{#each sortedPosts as post (post.id)}
-			<a
-				href="/posts/{post.id}"
-				class="-mx-6 grid grid-cols-1 items-start gap-4 border-t border-border py-5 transition-colors hover:bg-accent/30 sm:grid-cols-[1fr_auto] sm:px-3"
-			>
-				<!-- Left: text content -->
-				<div class="min-w-0">
-					<!-- Author + date -->
-					<div class="mb-2.5 flex items-center gap-2">
-						<Avatar username={post.author.username} className="size-6 text-[12px]" />
-						<span class="text-sm text-muted-foreground">{post.author.username}</span>
-						<span class="text-muted-foreground">·</span>
-						<span class="text-sm text-muted-foreground">{format(post.createdAt, 'MMM d')}</span>
-					</div>
-
-					<!-- Title -->
-					<h2
-						class="mb-1.5 line-clamp-2 font-ibm text-[17px] leading-snug font-medium tracking-tight text-foreground"
-					>
-						{post.title}
-					</h2>
-
-					<!-- Excerpt -->
-					<p class="mb-3.5 line-clamp-2 text-sm leading-relaxed text-muted-foreground">
-						{getExcerpt(post.content)}
-					</p>
-
-					<!-- Stats -->
-					<div class="flex items-center gap-4">
-						<span class="flex items-center gap-1 text-xs text-muted-foreground">
-							<Heart size={13} />
-							{formatCompactNum(post.likesCount)}
-						</span>
-						<span class="flex items-center gap-1 text-xs text-muted-foreground">
-							<MessageSquare size={13} />
-							{formatCompactNum(post.commentsCount)}
-						</span>
-						<span class="flex items-center gap-1 text-xs text-muted-foreground">
-							<Clock size={13} />
-							{getReadingTime(post.content)}
-						</span>
-					</div>
-				</div>
-
-				<!-- Right: thumbnail placeholder -->
-				<div
-					class="hidden size-20 shrink-0 rounded-md border border-border bg-muted/50 font-ibm uppercase sm:flex {getThumbnailColor(
-						post.title
-					)} items-center justify-center text-2xl font-medium"
-					aria-hidden="true"
+			<li>
+				<a
+					href="/posts/{post.id}"
+					class="-mx-6 grid grid-cols-1 items-start gap-4 border-t border-border py-5 transition-colors hover:bg-accent/30 sm:grid-cols-[1fr_auto] sm:px-3"
 				>
-					{post.title[0]}
-				</div>
-			</a>
+					<!-- Left: text content -->
+					<div class="min-w-0">
+						<!-- Author + date -->
+						<div class="mb-2.5 flex items-center gap-2">
+							<Avatar username={post.author.username} className="size-6 text-[12px]" />
+							<span class="text-sm text-muted-foreground">{post.author.username}</span>
+							<span class="text-muted-foreground">·</span>
+							<span class="text-sm text-muted-foreground">{format(post.createdAt, 'MMM d')}</span>
+						</div>
+
+						<!-- Title -->
+						<h2
+							class="mb-1.5 line-clamp-2 font-ibm text-[17px] leading-snug font-medium tracking-tight text-foreground"
+						>
+							{post.title}
+						</h2>
+
+						<!-- Excerpt -->
+						<p class="mb-3.5 line-clamp-2 text-sm leading-relaxed text-muted-foreground">
+							{getExcerpt(post.content)}
+						</p>
+
+						<!-- Stats -->
+						<div class="flex items-center gap-4">
+							<span class="flex items-center gap-1 text-xs text-muted-foreground">
+								<Heart size={13} />
+								{formatCompactNum(post.likesCount)}
+							</span>
+							<span class="flex items-center gap-1 text-xs text-muted-foreground">
+								<MessageSquare size={13} />
+								{formatCompactNum(post.commentsCount)}
+							</span>
+							<span class="flex items-center gap-1 text-xs text-muted-foreground">
+								<Clock size={13} />
+								{getReadingTime(post.content)}
+							</span>
+						</div>
+					</div>
+
+					<!-- Right: thumbnail placeholder -->
+					<div
+						class="hidden size-20 shrink-0 rounded-md border border-border bg-muted/50 font-ibm uppercase sm:flex {getThumbnailColor(
+							post.title
+						)} items-center justify-center text-2xl font-medium"
+						aria-hidden="true"
+					>
+						{post.title[0]}
+					</div>
+				</a>
+			</li>
 		{/each}
 
 		<!-- Empty state -->
@@ -3368,7 +4576,7 @@ export async function load({ url, fetch }) {
 				{/if}
 			</div>
 		{/if}
-	</div>
+	</ul>
 
 	<!-- Pagination - hidden during search since we filter client-side -->
 	{#if pagination && pagination.totalPages > 1 && !search}
@@ -4004,6 +5212,220 @@ export const actions = {
 
 ```
 
+# src/routes/(public)/users/[id]/+page.server.ts
+
+```ts
+import { error } from '@sveltejs/kit';
+import { getPostsByAuthor } from '$lib/api/post';
+import { handleLoadError } from '$lib/utils/error-handlers';
+
+export async function load({ params, fetch }) {
+	const authorId = Number(params.id);
+
+	if (!Number.isInteger(authorId) || authorId < 1) {
+		error(400, 'Invalid author ID');
+	}
+
+	try {
+		return await getPostsByAuthor(authorId, fetch);
+	} catch (err) {
+		return handleLoadError(err);
+	}
+}
+
+```
+
+# src/routes/(public)/users/[id]/+page.svelte
+
+```svelte
+<script lang="ts">
+	import { format } from 'date-fns';
+	import { Heart, MessageCircle, ChevronLeft } from '@lucide/svelte';
+	import type { PageProps } from './$types';
+	import {
+		formatCompactNum,
+		getExcerpt,
+		getReadingTime,
+		getThumbnailColor
+	} from '$lib/utils/formatters';
+	import Avatar from '$lib/components/Avatar.svelte';
+
+	let { data }: PageProps = $props();
+
+	let author = $derived(data.user);
+	let posts = $derived(data.posts ?? []);
+</script>
+
+<svelte:head>
+	<title>{author.username} — The Blog</title>
+	<meta name="description" content="Posts by {author.username}" />
+</svelte:head>
+
+<div class="w-full px-6 pb-16">
+	<!-- Back link -->
+	<div class="border-b border-border py-3.5">
+		<a
+			href="/"
+			class="flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
+		>
+			<ChevronLeft size={13} />
+			All posts
+		</a>
+	</div>
+
+	<!-- Author header -->
+	<div class="flex items-center gap-5 py-9">
+		<Avatar username={author.username} className="size-16 text-3xl" />
+
+		<div>
+			<h1 class="font-ibm text-2xl font-medium tracking-tight text-foreground">
+				{author.username}
+			</h1>
+			<p class="mt-1 text-sm text-muted-foreground">
+				{posts.length}
+				{posts.length === 1 ? 'post' : 'posts'}
+			</p>
+		</div>
+	</div>
+
+	<!-- Posts list -->
+	{#if posts.length > 0}
+		<ul class="px-6">
+			{#each posts as post (post.id)}
+				<li>
+					<a
+						href="/posts/{post.id}"
+						class="-mx-6 grid grid-cols-1 items-start gap-4 border-t border-border px-3 py-5 transition-colors hover:bg-accent/30 sm:grid-cols-[1fr_auto]"
+					>
+						<!-- Left: text content -->
+						<div class="min-w-0">
+							<!-- Date only — no author since we're on their profile -->
+							<p class="mb-2.5 text-sm text-muted-foreground">
+								{format(post.createdAt, 'MMM d, yyyy')}
+							</p>
+
+							<!-- Title -->
+							<h2
+								class="mb-1.5 line-clamp-2 font-ibm text-[17px] leading-snug font-medium tracking-tight text-foreground"
+							>
+								{post.title}
+							</h2>
+
+							<!-- Excerpt -->
+							<p class="mb-3.5 line-clamp-2 text-sm leading-relaxed text-muted-foreground">
+								{getExcerpt(post.content)}
+							</p>
+
+							<!-- Stats -->
+							<div class="flex items-center gap-4">
+								<span class="flex items-center gap-1 text-xs text-muted-foreground">
+									<Heart size={13} />
+									{formatCompactNum(post.likesCount)}
+								</span>
+								<span class="flex items-center gap-1 text-xs text-muted-foreground">
+									<MessageCircle size={13} />
+									{formatCompactNum(post.commentsCount)}
+								</span>
+								<span class="text-xs text-muted-foreground">
+									{getReadingTime(post.content)}
+								</span>
+							</div>
+						</div>
+
+						<!-- Right: thumbnail (hidden on mobile) -->
+						<div
+							class="hidden size-20 shrink-0 rounded-md font-ibm sm:flex
+								{getThumbnailColor(post.title)} items-center justify-center text-2xl font-medium"
+							aria-hidden="true"
+						>
+							{post.title[0].toUpperCase()}
+						</div>
+					</a>
+				</li>
+			{/each}
+		</ul>
+	{:else}
+		<div class="border-t border-border py-20 text-center">
+			<p class="text-sm text-muted-foreground">No posts yet.</p>
+		</div>
+	{/if}
+</div>
+
+```
+
+# src/routes/+error.svelte
+
+```svelte
+<script lang="ts">
+	import { goto } from '$app/navigation';
+	import { page } from '$app/state';
+	import Button from '$lib/components/ui/button/button.svelte';
+</script>
+
+<svelte:head>
+	<title>{page.status} — The Blog</title>
+</svelte:head>
+
+<div class="flex min-h-screen w-full flex-col items-center">
+	<!-- Minimal header -->
+	<header class="w-full border-b border-border">
+		<div class="mx-auto flex h-14 w-full max-w-2xl items-center px-6">
+			<a
+				href="/"
+				class="font-anton text-xl tracking-tight text-foreground transition-opacity hover:opacity-70"
+			>
+				The Blog
+			</a>
+		</div>
+	</header>
+
+	<!-- Error content -->
+	<main
+		class="flex w-full max-w-sm flex-1 flex-col items-center justify-center gap-3 px-6 text-center"
+	>
+		<p class="text-xs font-medium tracking-widest text-muted-foreground uppercase">
+			{page.status}
+		</p>
+
+		<h1 class="font-ibm text-2xl font-medium tracking-tight text-foreground">
+			{#if page.status === 404}
+				Page not found
+			{:else if page.status === 403}
+				Access denied
+			{:else if page.status === 400}
+				Bad request
+			{:else}
+				Something went wrong
+			{/if}
+		</h1>
+
+		<p class="mb-8 max-w-xs text-sm leading-relaxed text-muted-foreground">
+			{page.error?.message ?? 'An unexpected error occurred.'}
+		</p>
+
+		<div class="flex w-full items-center justify-center gap-6">
+			<Button
+				variant="default"
+				type="button"
+				onclick={() => goto('/')}
+				class="cursor-pointer px-4 py-1.5 text-sm transition-colors hover:text-foreground"
+			>
+				Go home
+			</Button>
+			<Button
+				variant="outline"
+				type="button"
+				onclick={() => history.back()}
+				class="cursor-pointer px-4 py-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
+			>
+				Go back
+			</Button>
+		</div>
+	</main>
+</div>
+
+```
+
 # src/routes/+layout.server.ts
 
 ```ts
@@ -4033,6 +5455,33 @@ export async function load({ locals }) {
 <Toaster position="bottom-left" />
 
 {@render children()}
+
+```
+
+# src/routes/auth/+layout.svelte
+
+```svelte
+<script lang="ts">
+	let { children } = $props();
+</script>
+
+<div class="flex min-h-screen flex-col items-center">
+	<!-- Minimal header — just the brand -->
+	<header class="w-full border-b border-border">
+		<div class="mx-auto flex h-14 w-full max-w-2xl items-center px-6">
+			<a
+				href="/"
+				class="font-anton text-xl tracking-tight text-foreground transition-opacity hover:opacity-70"
+			>
+				The Blog
+			</a>
+		</div>
+	</header>
+
+	<main class="mx-auto flex w-full max-w-2xl flex-1 flex-col items-center px-6">
+		{@render children()}
+	</main>
+</div>
 
 ```
 
@@ -4810,19 +6259,6 @@ export const actions = {
 			sans-serif;
 	}
 }
-
-```
-
-# src/routes/users/[id]/+page.server.ts
-
-```ts
-
-```
-
-# src/routes/users/[id]/+page.svelte
-
-```svelte
-<h1>User Page</h1>
 
 ```
 
