@@ -24,7 +24,9 @@
 	}: Props = $props();
 </script>
 
-<div class="overflow-hidden rounded-md border border-border transition-colors focus-within:border-foreground/30">
+<div
+	class="overflow-hidden rounded-md border border-border transition-colors focus-within:border-foreground/30"
+>
 	<textarea
 		{id}
 		bind:this={textareaEl}

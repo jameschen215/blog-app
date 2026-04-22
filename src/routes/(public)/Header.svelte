@@ -20,7 +20,7 @@
 	import Avatar from '$lib/components/Avatar.svelte';
 	import HeaderShell from '$lib/components/HeaderShell.svelte';
 	import type { AuthResultUser } from '$lib/types/data';
-	import { fade, slide } from 'svelte/transition';
+	import { fade } from 'svelte/transition';
 
 	interface Props {
 		user: AuthResultUser | null;
@@ -96,132 +96,132 @@
 
 <HeaderShell bind:el={headerEl}>
 	<!-- Brand -->
-		{#if !searchOpen}
-			<div
-				class="flex w-full items-center justify-between transition-opacity duration-200"
-				class:opacity-0={searchOpen}
-				class:pointer-events-none={searchOpen}
-			>
-				<a href="/" class="font-anton text-xl tracking-normal">The Blog</a>
-			</div>
-		{/if}
+	{#if !searchOpen}
+		<div
+			class="flex w-full items-center justify-between transition-opacity duration-200"
+			class:opacity-0={searchOpen}
+			class:pointer-events-none={searchOpen}
+		>
+			<a href="/" class="font-anton text-xl tracking-normal">The Blog</a>
+		</div>
+	{/if}
 
-		<!-- Search overlay -->
-		{#if searchOpen}
-			<div
-				transition:fade={{ duration: 150 }}
-				class="absolute inset-x-6 flex items-center gap-2 bg-background"
+	<!-- Search overlay -->
+	{#if searchOpen}
+		<div
+			transition:fade={{ duration: 150 }}
+			class="absolute inset-x-6 flex items-center gap-2 bg-background"
+		>
+			<Search size={15} class="shrink-0 text-muted-foreground" />
+			<input
+				type="text"
+				bind:this={searchInput}
+				bind:value={searchValue}
+				placeholder="Search posts..."
+				oninput={handleSearchInput}
+				onkeydown={handleSearchKeydown}
+				class="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none"
+			/>
+			<button
+				type="button"
+				aria-label="Close search"
+				onclick={closeSearch}
+				class="shrink-0 cursor-pointer rounded-full p-1 text-muted-foreground transition-colors hover:text-foreground"
 			>
-				<Search size={15} class="shrink-0 text-muted-foreground" />
-				<input
-					type="text"
-					bind:this={searchInput}
-					bind:value={searchValue}
-					placeholder="Search posts..."
-					oninput={handleSearchInput}
-					onkeydown={handleSearchKeydown}
-					class="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none"
-				/>
-				<button
-					type="button"
-					aria-label="Close search"
-					onclick={closeSearch}
-					class="shrink-0 cursor-pointer rounded-full p-1 text-muted-foreground transition-colors hover:text-foreground"
-				>
-					<X size={15} />
-				</button>
-			</div>
-		{/if}
+				<X size={15} />
+			</button>
+		</div>
+	{/if}
 
-		<!-- Right actions -->
-		{#if !searchOpen}
-			<div transition:fade={{ duration: 150 }} class="flex items-center gap-1">
-				<!-- Search toggle -->
+	<!-- Right actions -->
+	{#if !searchOpen}
+		<div transition:fade={{ duration: 150 }} class="flex items-center gap-1">
+			<!-- Search toggle -->
+			<Button
+				variant="ghost"
+				size="icon"
+				aria-label="Search posts"
+				onclick={openSearch}
+				class="cursor-pointer rounded-full"
+			>
+				<Search class="size-[1.1rem]" />
+			</Button>
+
+			<!-- Write - only shown when authenticated -->
+			{#if authenticated}
 				<Button
 					variant="ghost"
 					size="icon"
-					aria-label="Search posts"
-					onclick={openSearch}
+					aria-label="Write a post"
+					href="/dashboard/posts/new"
 					class="cursor-pointer rounded-full"
 				>
-					<Search class="size-[1.1rem]" />
+					<SquarePen class="size-[1.1rem]" />
 				</Button>
+			{/if}
 
-				<!-- Write - only shown when authenticated -->
-				{#if authenticated}
-					<Button
-						variant="ghost"
-						size="icon"
-						aria-label="Write a post"
-						href="/dashboard/posts/new"
-						class="cursor-pointer rounded-full"
-					>
-						<SquarePen class="size-[1.1rem]" />
-					</Button>
-				{/if}
-
-				<!-- Avatar / menu dropdown -->
-				<DropdownMenu.Root>
-					<DropdownMenu.Trigger>
-						{#snippet child({ props })}
-							<Button
-								{...props}
-								variant="ghost"
-								size="icon"
-								aria-label="Menu"
-								class="group cursor-pointer rounded-full px-0!"
-							>
-								{#if authenticated}
-									<Avatar
-										username={user!.username}
-										className="size-8 group-hover:border-transparent"
-									/>
-								{:else}
-									<Menu class="size-[1.1rem]" />
-								{/if}
-							</Button>
-						{/snippet}
-					</DropdownMenu.Trigger>
-
-					<DropdownMenu.Content class="w-40 rounded-sm p-2" align="end">
-						{#if authenticated}
-							<DropdownMenu.Label class="text-xs">{user!.username}</DropdownMenu.Label>
-							<DropdownMenu.Separator class="mb-1" />
-						{/if}
-
-						<DropdownMenu.Group class="space-y-0.5">
+			<!-- Avatar / menu dropdown -->
+			<DropdownMenu.Root>
+				<DropdownMenu.Trigger>
+					{#snippet child({ props })}
+						<Button
+							{...props}
+							variant="ghost"
+							size="icon"
+							aria-label="Menu"
+							class="group cursor-pointer rounded-full px-0!"
+						>
 							{#if authenticated}
-								<DropdownMenu.Item class="cursor-pointer" onclick={() => goto('/dashboard')}>
-									<LayoutDashboard class="size-4" /> Dashboard
-								</DropdownMenu.Item>
-
-								<form action="/auth/logout" method="post" use:enhance>
-									<DropdownMenu.Item class="w-full cursor-pointer">
-										{#snippet child({ props })}
-											<button {...props} type="submit">
-												<LogOut class="size-[1.1rem]" /> Logout
-											</button>
-										{/snippet}
-									</DropdownMenu.Item>
-								</form>
+								<Avatar
+									username={user!.username}
+									className="size-8 group-hover:border-transparent"
+								/>
 							{:else}
-								<DropdownMenu.Item
-									class="cursor-pointer"
-									onclick={() => goto(`/auth/login?redirect=${encodeURIComponent(redirect)}`)}
-								>
-									<LogIn class="size-4" /> Login
-								</DropdownMenu.Item>
-
-								<DropdownMenu.Item
-									class="cursor-pointer"
-									onclick={() => goto(`/auth/register?redirect=${encodeURIComponent(redirect)}`)}
-								>
-									<UserPlus class="size-4" /> Register
-								</DropdownMenu.Item>
+								<Menu class="size-[1.1rem]" />
 							{/if}
-						</DropdownMenu.Group>
-					</DropdownMenu.Content>
-				</DropdownMenu.Root>
-			</div>
-		{/if}
+						</Button>
+					{/snippet}
+				</DropdownMenu.Trigger>
+
+				<DropdownMenu.Content class="w-40 rounded-sm p-2" align="end">
+					{#if authenticated}
+						<DropdownMenu.Label class="text-xs">{user!.username}</DropdownMenu.Label>
+						<DropdownMenu.Separator class="mb-1" />
+					{/if}
+
+					<DropdownMenu.Group class="space-y-0.5">
+						{#if authenticated}
+							<DropdownMenu.Item class="cursor-pointer" onclick={() => goto('/dashboard')}>
+								<LayoutDashboard class="size-4" /> Dashboard
+							</DropdownMenu.Item>
+
+							<form action="/auth/logout" method="post" use:enhance>
+								<DropdownMenu.Item class="w-full cursor-pointer">
+									{#snippet child({ props })}
+										<button {...props} type="submit">
+											<LogOut class="size-[1.1rem]" /> Logout
+										</button>
+									{/snippet}
+								</DropdownMenu.Item>
+							</form>
+						{:else}
+							<DropdownMenu.Item
+								class="cursor-pointer"
+								onclick={() => goto(`/auth/login?redirect=${encodeURIComponent(redirect)}`)}
+							>
+								<LogIn class="size-4" /> Login
+							</DropdownMenu.Item>
+
+							<DropdownMenu.Item
+								class="cursor-pointer"
+								onclick={() => goto(`/auth/register?redirect=${encodeURIComponent(redirect)}`)}
+							>
+								<UserPlus class="size-4" /> Register
+							</DropdownMenu.Item>
+						{/if}
+					</DropdownMenu.Group>
+				</DropdownMenu.Content>
+			</DropdownMenu.Root>
+		</div>
+	{/if}
 </HeaderShell>

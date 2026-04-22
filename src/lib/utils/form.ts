@@ -1,5 +1,5 @@
-import { flattenError } from 'zod';
 import type { ZodType } from 'zod';
+import { flattenError } from 'zod';
 
 export function parseFormData<T>(schema: ZodType<T>, formData: FormData) {
 	const raw = Object.fromEntries(formData);
