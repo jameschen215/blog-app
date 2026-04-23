@@ -55,5 +55,8 @@
 		"typescript-eslint": "^8.58.1",
 		"vite": "^8.0.7",
 		"zod": "^4.x"
+	},
+	"dependencies": {
+		"tiptap-markdown": "^0.9.0"
 	}
 }

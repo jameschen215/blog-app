@@ -2,6 +2,7 @@
 
 <script lang="ts">
 	import { Editor } from '@tiptap/core';
+	import { Markdown } from 'tiptap-markdown';
 	import { onMount, onDestroy } from 'svelte';
 	import { StarterKit } from '@tiptap/starter-kit';
 	import { Placeholder } from '@tiptap/extension-placeholder';
@@ -46,7 +47,21 @@
 	onMount(() => {
 		editor = new Editor({
 			element: element!,
-			extensions: [StarterKit, Placeholder.configure({ placeholder: 'New blog content here...' })],
+			extensions: [
+				StarterKit,
+
+				Placeholder.configure({ placeholder: 'New blog content here...' }),
+				Markdown.configure({
+					html: true, // Allow HTML in markdown
+					tightLists: true, // No paragraph wrapping in lists
+					tightListClass: 'tight',
+					bulletListMarker: '-',
+					linkify: true, // Auto-link URLs
+					breaks: false, // New lines don't create <br>
+					transformPastedText: true, // ← this is the key option
+					transformCopiedText: false
+				})
+			],
 			content,
 			autofocus: true,
 			editorProps: {
