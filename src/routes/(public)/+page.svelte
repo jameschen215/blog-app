@@ -131,13 +131,13 @@
 
 		<!-- Empty state -->
 		{#if posts.length === 0}
-			<div class="border-t border-border text-center">
+			<div class="-mx-6 border-t border-border text-center">
 				{#if search}
 					<p class="text-sm text-muted-foreground">
 						No posts matching <span class="text-foreground">{search}</span>
 					</p>
 				{:else}
-					<p class="text-sm text-muted-foreground">No posts yet.</p>
+					<p class="mt-8 text-sm text-muted-foreground">No posts yet.</p>
 				{/if}
 			</div>
 		{/if}
