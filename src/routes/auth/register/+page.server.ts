@@ -7,13 +7,21 @@ import { registerSchema } from '$lib/schema/auth';
 import { parseFormData } from '$lib/utils/form';
 
 export const actions = {
-	default: async ({ request, url, fetch }) => {
+	default: async ({ request, url, fetch, cookies }) => {
 		const { data, errors, raw } = parseFormData(registerSchema, await request.formData());
 
 		if (!data) return fail(400, { errors, data: raw });
 
 		try {
-			await register(data, fetch);
+			const result = await register(data, fetch);
+
+			cookies.set('jwt', result.token, {
+				httpOnly: true,
+				secure: true,
+				sameSite: 'lax',
+				path: '/',
+				maxAge: 60 * 60 * 24 * 7
+			});
 
 			const to = url.searchParams.has('redirect') ? `${url.searchParams.get('redirect')}` : '/';
 
