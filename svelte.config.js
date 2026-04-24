@@ -1,4 +1,5 @@
-import adapter from '@sveltejs/adapter-auto';
+// svelte.config.js
+import adapter from '@sveltejs/adapter-node';
 
 /** @type {import('@sveltejs/kit').Config} */
 const config = {
