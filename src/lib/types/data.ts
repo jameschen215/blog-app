@@ -79,4 +79,5 @@ export interface AuthResultUser {
 
 export interface AuthResult {
 	user: AuthResultUser;
+	token: string;
 }

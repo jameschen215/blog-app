@@ -235,6 +235,7 @@ export default defineConfig(
 		"zod": "^4.x"
 	},
 	"dependencies": {
+		"@sveltejs/adapter-node": "^5.5.4",
 		"tiptap-markdown": "^0.9.0"
 	}
 }
@@ -2010,7 +2011,8 @@ export {
 ```ts
 // $lib/constants/index.ts
 import { dev } from '$app/environment';
-import { PUBLIC_API_URL } from '$env/static/public';
+// import { PUBLIC_API_URL } from '$env/static/public';
+import { env } from '$env/dynamic/public';
 
 export const CONSTANTS = {
 	COMMENT: {
@@ -2019,7 +2021,7 @@ export const CONSTANTS = {
 	},
 	API: {
 		TIMEOUT: 10 * 1000,
-		BASE_URL: dev ? '' : PUBLIC_API_URL
+		BASE_URL: dev ? '' : env.PUBLIC_API_URL
 	},
 	PAGINATION: {
 		DEFAULT_PAGE: 1,
@@ -6071,7 +6073,8 @@ Disallow:
 # svelte.config.js
 
 ```js
-import adapter from '@sveltejs/adapter-auto';
+// svelte.config.js
+import adapter from '@sveltejs/adapter-node';
 
 /** @type {import('@sveltejs/kit').Config} */
 const config = {

@@ -11,13 +11,21 @@ export async function load({ locals }) {
 }
 
 export const actions = {
-	default: async ({ request, fetch, url }) => {
+	default: async ({ request, fetch, url, cookies }) => {
 		const { data, errors, raw } = parseFormData(loginSchema, await request.formData());
 
 		if (!data) return fail(400, { errors, data: raw });
 
 		try {
-			await login(data, fetch);
+			const result = await login(data, fetch);
+
+			cookies.set('jwt', result.token, {
+				httpOnly: true,
+				secure: true,
+				sameSite: 'lax',
+				path: '/',
+				maxAge: 60 * 60 * 24 * 7
+			});
 
 			const to = url.searchParams.has('redirect') ? `${url.searchParams.get('redirect')}` : '/';
 
