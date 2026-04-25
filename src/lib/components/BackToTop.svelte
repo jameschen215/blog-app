@@ -25,8 +25,6 @@
 	}
 
 	$effect(() => {
-		console.log({ visible });
-
 		// Initial check (e.g. after navigation lands deep on a page)
 		handleScroll();
 
