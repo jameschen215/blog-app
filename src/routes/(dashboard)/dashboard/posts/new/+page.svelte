@@ -84,7 +84,8 @@
 	}
 
 	function handleContentUpdate(html: string) {
-		draft = { ...draft, content: sanitizeHtml(html) };
+		// draft = { ...draft, content: sanitizeHtml(html) };
+		draft = { ...draft, content: html };
 	}
 
 	// Hydrate once on mount
