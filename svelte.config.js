@@ -1,11 +1,22 @@
 // svelte.config.js
 import adapter from '@sveltejs/adapter-node';
 
-const trustedOrigins = [
-	process.env.PUBLIC_APP_URL,
-	process.env.RENDER_EXTERNAL_URL,
+function toOrigin(value) {
+	if (!value) return null;
+
+	try {
+		return new URL(value).origin;
+	} catch {
+		return null;
+	}
+}
+
+const trustedOrigins = [...new Set([
+	toOrigin(process.env.ORIGIN),
+	toOrigin(process.env.PUBLIC_APP_URL),
+	toOrigin(process.env.RENDER_EXTERNAL_URL),
 	'https://blog-app-g00p.onrender.com'
-].filter(Boolean);
+].filter(Boolean))];
 
 /** @type {import('@sveltejs/kit').Config} */
 const config = {
