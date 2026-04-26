@@ -2,7 +2,6 @@
 
 <script lang="ts">
 	import { Editor } from '@tiptap/core';
-	import { Markdown } from 'tiptap-markdown';
 	import { onMount, onDestroy } from 'svelte';
 	import { StarterKit } from '@tiptap/starter-kit';
 	import { Placeholder } from '@tiptap/extension-placeholder';
@@ -20,6 +19,7 @@
 
 	let element = $state<HTMLDivElement>();
 	let editor = $state<Editor | null>(null);
+	let editorHtml = $state('');
 	let activeFormats = $state({
 		bold: false,
 		italic: false,
@@ -50,17 +50,7 @@
 			extensions: [
 				StarterKit,
 
-				Placeholder.configure({ placeholder: 'New blog content here...' }),
-				Markdown.configure({
-					html: true, // Allow HTML in markdown
-					tightLists: true, // No paragraph wrapping in lists
-					tightListClass: 'tight',
-					bulletListMarker: '-',
-					linkify: true, // Auto-link URLs
-					breaks: false, // New lines don't create <br>
-					transformPastedText: true, // ← this is the key option
-					transformCopiedText: false
-				})
+				Placeholder.configure({ placeholder: 'New blog content here...' })
 			],
 			content,
 			autofocus: true,
@@ -74,17 +64,37 @@
 				syncActiveFormats(editor);
 			},
 			onUpdate: ({ editor }) => {
-				onUpdate?.(editor.getHTML());
+				editorHtml = editor.getHTML();
+
+				try {
+					onUpdate?.(editorHtml);
+				} catch (error) {
+					console.error('Failed to handle editor update', error);
+				}
 			}
 		});
 
 		syncActiveFormats(editor);
 	});
 
+	$effect(() => {
+		if (!editor) {
+			editorHtml = content;
+			return;
+		}
+
+		if (content === editorHtml) return;
+
+		editor.commands.setContent(content, { emitUpdate: false });
+		editorHtml = content;
+	});
+
 	onDestroy(() => {
 		editor?.destroy();
 	});
 </script>
+
+<input type="hidden" name="content" value={editorHtml} />
 
 <!-- Toolbar -->
 {#if editor}
