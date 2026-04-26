@@ -119,7 +119,6 @@
 
 	const handleSubmit: SubmitFunction = ({ formData }) => {
 		submitting = true;
-		formData.set('content', String(formData.get('content') ?? draft.content));
 		formData.set('published', String(draft.published));
 
 		return async ({ result, update }) => {

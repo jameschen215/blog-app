@@ -5,6 +5,7 @@ import type { Actions } from './$types';
 import { handleLoadError, handleActionError } from '$lib/utils/error-handlers';
 import { deletePostSchema, togglePublishSchema, updatePostSchema } from '$lib/schema/post';
 import { getPost, updatePost, deletePost, deleteComment, togglePostPublish } from '$lib/api/post';
+import { decodeFormContent } from '$lib/utils/content-encoding';
 
 export async function load({ locals, params, fetch }) {
 	const id = parseInt(params.id);
@@ -31,11 +32,9 @@ export const actions = {
 		const formData = await request.formData();
 		const data = {
 			title: formData.get('title') as string,
-			content: formData.get('content') as string,
+			content: decodeFormContent(formData.get('contentEncoded'), formData.get('content')),
 			published: formData.get('published') === 'true'
 		};
-
-		console.log('content received on server: ', data.content.slice(0, 500));
 
 		const validateResult = updatePostSchema.safeParse(data);
 		if (!validateResult.success) {

@@ -5,13 +5,14 @@ import { fail, redirect } from '@sveltejs/kit';
 import { createPost } from '$lib/api/post';
 import { createPostSchema } from '$lib/schema/post';
 import { handleActionError } from '$lib/utils/error-handlers';
+import { decodeFormContent } from '$lib/utils/content-encoding';
 
 export const actions = {
 	default: async ({ request, fetch }) => {
 		const formData = await request.formData();
 		const data = {
 			title: formData.get('title') as string,
-			content: formData.get('content') as string,
+			content: decodeFormContent(formData.get('contentEncoded'), formData.get('content')),
 			published: formData.get('published') === 'true'
 		};
 

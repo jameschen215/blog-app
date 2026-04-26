@@ -6,6 +6,7 @@
 	import { StarterKit } from '@tiptap/starter-kit';
 	import { Placeholder } from '@tiptap/extension-placeholder';
 	import { Bold, CodeXml, Italic, List, ListOrdered, Quote, Save } from '@lucide/svelte';
+	import { encodeFormContent } from '$lib/utils/content-encoding';
 
 	interface Props {
 		content: string;
@@ -94,7 +95,7 @@
 	});
 </script>
 
-<input type="hidden" name="content" value={editorHtml} />
+<input type="hidden" name="contentEncoded" value={encodeFormContent(editorHtml)} />
 
 <!-- Toolbar -->
 {#if editor}
