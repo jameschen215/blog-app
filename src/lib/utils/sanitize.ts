@@ -37,12 +37,12 @@ import DOMPurify from 'isomorphic-dompurify';
 
 export function sanitizeHtml(html: string): string {
 	// Only wrap in paragraphs if content has no HTML tags at all
-	if (!/<[a-z][\s\S]*>/i.test(html)) {
-		html = html
-			.split(/\n/)
-			.map((p) => `<p>${p}</p>`)
-			.join('');
-	}
+	// if (!/<[a-z][\s\S]*>/i.test(html)) {
+	// 	html = html
+	// 		.split(/\n/)
+	// 		.map((p) => `<p>${p}</p>`)
+	// 		.join('');
+	// }
 
 	return DOMPurify.sanitize(html, {
 		ALLOWED_TAGS: [
