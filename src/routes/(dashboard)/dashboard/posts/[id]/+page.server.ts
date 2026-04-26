@@ -35,6 +35,8 @@ export const actions = {
 			published: formData.get('published') === 'true'
 		};
 
+		console.log('content received on server: ', data.content.slice(0, 500));
+
 		const validateResult = updatePostSchema.safeParse(data);
 		if (!validateResult.success) {
 			return fail(400, {
