@@ -36,8 +36,7 @@
 
 	let serverSnapshot = $derived({
 		title: post.title,
-		// content: sanitizeHtml(post.content),
-		content: post.content,
+		content: sanitizeHtml(post.content),
 		published: post.published
 	});
 
@@ -128,8 +127,7 @@
 	}
 
 	function handleContentUpdate(html: string) {
-		// draft = { ...draft, content: sanitizeHtml(html) };
-		draft = { ...draft, content: html };
+		draft = { ...draft, content: sanitizeHtml(html) };
 	}
 
 	$effect(() => {

@@ -2,5 +2,6 @@
 	"files.associations": {
 		"*.css": "tailwindcss"
 	},
-	"git.ignoreLimitWarning": true
+	"git.ignoreLimitWarning": true,
+	"cSpell.words": ["linkify"]
 }

@@ -7,6 +7,8 @@
 	import { Placeholder } from '@tiptap/extension-placeholder';
 	import { Bold, CodeXml, Italic, List, ListOrdered, Quote, Save } from '@lucide/svelte';
 	import { encodeFormContent } from '$lib/utils/content-encoding';
+	import { Markdown } from 'tiptap-markdown';
+	import { PasteMarkdown } from '$lib/api/extensions/PasteMarkdown';
 
 	interface Props {
 		content: string;
@@ -50,7 +52,8 @@
 			element: element!,
 			extensions: [
 				StarterKit,
-
+				Markdown,
+				PasteMarkdown,
 				Placeholder.configure({ placeholder: 'New blog content here...' })
 			],
 			content,

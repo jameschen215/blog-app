@@ -60,7 +60,6 @@
 	<!-- Content -->
 	<div class="prose max-w-none prose-zinc dark:prose-invert">
 		<!-- eslint-disable-next-line svelte/no-at-html-tags -->
-		<!-- {@html sanitizeHtml(post.content)} -->
-		{@html post.content}
+		{@html sanitizeHtml(post.content)}
 	</div>
 </section>

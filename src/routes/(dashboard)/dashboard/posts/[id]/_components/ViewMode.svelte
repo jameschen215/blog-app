@@ -120,8 +120,7 @@
 	<!-- Content -->
 	<div class="prose max-w-none border-t border-border pt-6 prose-zinc dark:prose-invert">
 		<!-- eslint-disable-next-line svelte/no-at-html-tags -->
-		<!-- {@html sanitizeHtml(post.content)} -->
-		{@html post.content}
+		{@html sanitizeHtml(post.content)}
 	</div>
 
 	<!-- Comments -->
@@ -206,8 +205,7 @@
 										class="prose max-w-none text-sm text-muted-foreground prose-zinc dark:prose-invert"
 									>
 										<!-- eslint-disable-next-line svelte/no-at-html-tags -->
-										<!-- {@html sanitizeHtml(comment.content)} -->
-										{@html comment.content}
+										{@html sanitizeHtml(comment.content)}
 									</div>
 								</div>
 							</div>
