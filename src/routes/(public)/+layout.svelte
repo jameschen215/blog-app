@@ -8,7 +8,7 @@
 <div class="flex min-h-screen flex-col items-center">
 	<Header user={data.user} />
 
-	<main class="flex- mx-auto w-full max-w-2xl">
+	<main class="mx-auto w-full max-w-2xl">
 		{@render children()}
 	</main>
 
