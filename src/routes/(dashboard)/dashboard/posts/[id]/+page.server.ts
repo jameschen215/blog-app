@@ -48,7 +48,7 @@ export const actions = {
 			await updatePost(id, validateResult.data, fetch);
 			return { success: true };
 		} catch (err) {
-			return handleActionError(err); // fixed: was missing return
+			return handleActionError(err);
 		}
 	},
 

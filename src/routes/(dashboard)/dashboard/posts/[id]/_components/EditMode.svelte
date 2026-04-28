@@ -60,13 +60,19 @@
 
 		return async ({ result, update }) => {
 			submitting = false;
-			await update({ reset: false });
 
 			if (result.type === 'success') {
 				mode = 'view';
 				discardDraft();
 				toast.success('Post updated!');
+			} else if (result.type === 'failure') {
+				const message = (result.data as { message?: string })?.message;
+				toast.error(message ?? 'Failed to save post.');
+			} else if (result.type === 'error') {
+				toast.error(result.error?.message ?? 'An unexpected error occurred.');
 			}
+
+			await update({ reset: false });
 		};
 	};
 

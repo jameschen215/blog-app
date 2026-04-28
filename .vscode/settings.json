@@ -3,5 +3,8 @@
 		"*.css": "tailwindcss"
 	},
 	"git.ignoreLimitWarning": true,
-	"cSpell.words": ["linkify"]
+	"cSpell.words": [
+		"linkify"
+	],
+	"postman.settings.dotenv-detection-notification-visibility": false
 }
