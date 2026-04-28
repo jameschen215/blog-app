@@ -1,4 +1,5 @@
 <script lang="ts">
+	import * as z from 'zod';
 	import { toast } from 'svelte-sonner';
 	import { enhance } from '$app/forms';
 	import { browser } from '$app/environment';
@@ -15,6 +16,13 @@
 	import TiptapEditor from '../_components/TiptapEditor.svelte';
 
 	const STORAGE_KEY = 'draft:new-post';
+
+	const storedDraftSchema = z.object({
+		title: z.string().default(''),
+		content: z.string().default(''),
+		published: z.boolean().default(false),
+		savedAt: z.string().nullable().default(null)
+	});
 
 	type NewDraft = {
 		title: string;
@@ -66,15 +74,10 @@
 		if (!saved) return;
 
 		try {
-			const parsed = JSON.parse(saved);
-			draft = {
-				title: parsed.title ?? '',
-				content: parsed.content ?? '',
-				published: parsed.published ?? false,
-				savedAt: parsed.savedAt ?? null
-			};
+			const parsed = storedDraftSchema.parse(JSON.parse(saved));
+			draft = parsed;
 		} catch {
-			// bad JSON in storage — ignore
+			localStorage.removeItem(STORAGE_KEY);
 		}
 	}
 
