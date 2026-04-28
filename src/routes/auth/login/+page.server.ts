@@ -5,6 +5,7 @@ import { login } from '$lib/api/auth';
 import { APIError } from '$lib/api/client';
 import { loginSchema } from '$lib/schema/auth';
 import { parseFormData } from '$lib/utils/form';
+import { getSafeRedirect } from '$lib/utils/redirect';
 
 export async function load({ locals }) {
 	if (locals.user) redirect(307, '/');
@@ -27,7 +28,7 @@ export const actions = {
 				maxAge: 60 * 60 * 24 * 7
 			});
 
-			const to = url.searchParams.has('redirect') ? `${url.searchParams.get('redirect')}` : '/';
+			const to = getSafeRedirect(url);
 
 			redirect(307, to);
 		} catch (error) {

@@ -5,6 +5,7 @@ import { register } from '$lib/api/auth';
 import { APIError } from '$lib/api/client';
 import { registerSchema } from '$lib/schema/auth';
 import { parseFormData } from '$lib/utils/form';
+import { getSafeRedirect } from '$lib/utils/redirect';
 
 export const actions = {
 	default: async ({ request, url, fetch, cookies }) => {
@@ -23,7 +24,7 @@ export const actions = {
 				maxAge: 60 * 60 * 24 * 7
 			});
 
-			const to = url.searchParams.has('redirect') ? `${url.searchParams.get('redirect')}` : '/';
+			const to = getSafeRedirect(url);
 
 			redirect(307, to);
 		} catch (error) {
