@@ -24,5 +24,6 @@ export function handleActionError(err: unknown) {
 		});
 	}
 
-	throw err;
+	console.error('Unexpected action error:', err);
+	return fail(500, { message: 'An unexpected error occurred. Please try again.' });
 }
