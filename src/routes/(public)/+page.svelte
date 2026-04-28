@@ -8,7 +8,7 @@
 	import Avatar from '$lib/components/Avatar.svelte';
 	import {
 		formatCompactNum,
-		getExcerpt,
+		getExcerptOfTheFirstPara,
 		getReadingTime,
 		getThumbnailColor
 	} from '$lib/utils/formatters';
@@ -96,7 +96,7 @@
 
 						<!-- Excerpt -->
 						<p class="mb-3.5 line-clamp-2 text-sm leading-relaxed text-muted-foreground">
-							{getExcerpt(post.content)}
+							{getExcerptOfTheFirstPara(post.content)}
 						</p>
 
 						<!-- Stats -->
@@ -118,12 +118,11 @@
 
 					<!-- Right: thumbnail placeholder -->
 					<div
-						class="hidden size-20 shrink-0 rounded-md border border-border bg-muted/50 font-ibm uppercase sm:flex {getThumbnailColor(
-							post.title
-						)} items-center justify-center text-2xl font-medium"
+						class="hidden size-20 shrink-0 rounded-md font-ibm text-foreground/80 sm:flex
+								{getThumbnailColor(post.title)} items-center justify-center text-2xl font-medium"
 						aria-hidden="true"
 					>
-						{post.title[0]}
+						{post.title[0].toUpperCase()}
 					</div>
 				</a>
 			</li>

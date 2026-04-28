@@ -167,15 +167,12 @@
 						<Button
 							{...props}
 							variant="ghost"
-							size="icon"
+							size="icon-sm"
 							aria-label="Menu"
 							class="group cursor-pointer rounded-full px-0!"
 						>
 							{#if authenticated}
-								<Avatar
-									username={user!.username}
-									className="size-8 group-hover:border-transparent"
-								/>
+								<Avatar username={user!.username} className="size-full text-base font-medium" />
 							{:else}
 								<Menu class="size-[1.1rem]" />
 							{/if}

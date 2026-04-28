@@ -35,6 +35,10 @@ export async function getPostsByAuthor(authorId: number, customFetch = fetch): P
 	return apiGet<UserResult>(`/api/posts/authors/${authorId}`, customFetch);
 }
 
+export async function getMyPosts(customFetch = fetch): Promise<PostsResult> {
+	return apiGet<PostsResult>(`/api/posts/me`, customFetch);
+}
+
 export async function togglePostPublish(id: number, customFetch = fetch): Promise<PostWithAuthor> {
 	return apiPost(`/api/posts/${id}/publish`, undefined, customFetch);
 }

@@ -117,7 +117,7 @@
 	<form action="?/comment" method="post" use:enhance={handleCommentSubmit} class="mb-10">
 		{#if authenticated}
 			<div class="mb-3 flex items-center gap-2">
-				<Avatar username={user!.username} className="size-7 text-[12px]" />
+				<Avatar username={user!.username} className="size-6 text-[12px]" />
 				<span class="text-sm font-medium">{user!.username}</span>
 			</div>
 		{/if}
@@ -164,22 +164,30 @@
 						<!-- Head row -->
 						<div class="mb-1.5 flex items-baseline justify-between gap-2">
 							<div class="flex items-baseline gap-2">
-								{#if comment.author}
-									<Avatar
-										username={comment.author.username}
-										className="size-7 shrink-0 text-[11px]"
-									/>
-								{:else}
-									<div
-										class="flex size-7 shrink-0 items-center justify-center rounded-full border border-border bg-muted/50 text-[11px] font-medium text-muted-foreground"
-									>
-										?
-									</div>
-								{/if}
+								<div class="mb-3 flex items-center gap-2">
+									{#if comment.author}
+										<a
+											href="/users/{post.author.id}"
+											class="flex size-6 shrink-0 items-center justify-center rounded-full border border-border bg-muted/50 text-[12px] font-medium text-foreground uppercase transition-colors hover:border-foreground/30"
+										>
+											{post.author.username[0]}
+										</a>
+										<a
+											href="/users/{post.author.id}"
+											class="text-sm font-medium text-foreground transition-colors hover:underline hover:underline-offset-2"
+										>
+											{post.author.username}
+										</a>
+									{:else}
+										<div
+											class="flex size-6 shrink-0 items-center justify-center rounded-full border border-border bg-muted/50 text-[11px] font-medium text-muted-foreground"
+										>
+											?
+										</div>
+										<span class="text-sm font-medium text-foreground">Deleted user</span>
+									{/if}
+								</div>
 
-								<span class="text-sm font-medium text-foreground">
-									{comment.author?.username ?? 'Deleted user'}
-								</span>
 								<span class="text-xs text-muted-foreground">
 									{format(comment.createdAt, 'MMM d, yyyy')}
 								</span>
@@ -194,7 +202,7 @@
 								<button
 									type="button"
 									onclick={() => startEditing(comment.id, comment.content)}
-									class="text-xs text-muted-foreground/50 transition-colors hover:text-muted-foreground"
+									class="cursor-pointer text-xs text-muted-foreground/50 transition-colors hover:text-muted-foreground"
 								>
 									Edit
 								</button>
@@ -206,7 +214,7 @@
 							<p class="foreground ml-9 text-sm leading-relaxed text-muted-foreground">
 								{comment.content}
 							</p>
-						<!-- Edit mode -->
+							<!-- Edit mode -->
 						{:else}
 							<form
 								action="?/editComment"

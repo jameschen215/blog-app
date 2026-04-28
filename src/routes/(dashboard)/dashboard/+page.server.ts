@@ -2,12 +2,12 @@ import { fail } from '@sveltejs/kit';
 import type { Actions } from './$types';
 
 import { deletePostSchema, togglePublishSchema } from '$lib/schema/post';
-import { deletePost, getPostsByAuthor, togglePostPublish } from '$lib/api/post';
+import { deletePost, getMyPosts, getPostsByAuthor, togglePostPublish } from '$lib/api/post';
 import { handleActionError, handleLoadError } from '$lib/utils/error-handlers';
 
-export async function load({ locals, fetch }) {
+export async function load({ fetch }) {
 	try {
-		const result = await getPostsByAuthor(locals.user!.id, fetch);
+		const result = await getMyPosts(fetch);
 
 		return {
 			posts: result.posts

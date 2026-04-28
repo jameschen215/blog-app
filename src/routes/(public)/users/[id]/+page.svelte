@@ -5,6 +5,7 @@
 	import {
 		formatCompactNum,
 		getExcerpt,
+		getExcerptOfTheFirstPara,
 		getReadingTime,
 		getThumbnailColor
 	} from '$lib/utils/formatters';
@@ -73,7 +74,7 @@
 
 							<!-- Excerpt -->
 							<p class="mb-3.5 line-clamp-2 text-sm leading-relaxed text-muted-foreground">
-								{getExcerpt(post.content)}
+								{getExcerptOfTheFirstPara(post.content)}
 							</p>
 
 							<!-- Stats -->
@@ -94,7 +95,7 @@
 
 						<!-- Right: thumbnail (hidden on mobile) -->
 						<div
-							class="hidden size-20 shrink-0 rounded-md font-ibm sm:flex
+							class="hidden size-20 shrink-0 rounded-md font-ibm text-foreground/80 sm:flex
 								{getThumbnailColor(post.title)} items-center justify-center text-2xl font-medium"
 							aria-hidden="true"
 						>

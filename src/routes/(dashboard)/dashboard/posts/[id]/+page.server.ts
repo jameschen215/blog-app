@@ -7,7 +7,7 @@ import { deletePostSchema, togglePublishSchema, updatePostSchema } from '$lib/sc
 import { getPost, updatePost, deletePost, deleteComment, togglePostPublish } from '$lib/api/post';
 import { decodeFormContent } from '$lib/utils/content-encoding';
 
-export async function load({ locals, params, fetch }) {
+export async function load({ params, fetch }) {
 	const id = parseInt(params.id);
 
 	if (isNaN(id) || id < 1) {
