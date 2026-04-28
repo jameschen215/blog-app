@@ -62,7 +62,7 @@
 
 	<!-- Actions -->
 	<div
-		class="relative flex w-full items-center justify-center gap-1 place-self-end sm:place-self-center"
+		class="relative flex w-full items-center justify-end gap-1 place-self-end sm:place-self-center"
 	>
 		<!-- Publish/unpublish toggle -->
 		<form method="POST" action="?/togglePublish" use:enhance={enhanceToggle}>
