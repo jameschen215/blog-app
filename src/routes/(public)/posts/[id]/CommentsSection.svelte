@@ -202,7 +202,7 @@
 								<button
 									type="button"
 									onclick={() => startEditing(comment.id, comment.content)}
-									class="text-xs text-muted-foreground/50 transition-colors hover:text-muted-foreground"
+									class="cursor-pointer text-xs text-muted-foreground/50 transition-colors hover:text-muted-foreground"
 								>
 									Edit
 								</button>

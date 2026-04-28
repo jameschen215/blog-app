@@ -118,12 +118,11 @@
 
 					<!-- Right: thumbnail placeholder -->
 					<div
-						class="hidden size-20 shrink-0 rounded-md border border-border bg-muted/50 font-ibm uppercase sm:flex {getThumbnailColor(
-							post.title
-						)} items-center justify-center text-2xl font-medium"
+						class="hidden size-20 shrink-0 rounded-md font-ibm text-foreground/80 sm:flex
+								{getThumbnailColor(post.title)} items-center justify-center text-2xl font-medium"
 						aria-hidden="true"
 					>
-						{post.title[0]}
+						{post.title[0].toUpperCase()}
 					</div>
 				</a>
 			</li>

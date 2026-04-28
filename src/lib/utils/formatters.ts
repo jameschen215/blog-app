@@ -31,11 +31,23 @@ export function getExcerptOfTheFirstPara(content: string): string {
 }
 
 const THUMBNAIL_COLORS = [
-	'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-200',
-	'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200',
-	'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200',
-	'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-200',
-	'bg-violet-100 text-violet-800 dark:bg-violet-950 dark:text-violet-200'
+	'bg-red-100 dark:bg-red-700',
+	'bg-orange-100 dark:bg-orange-700',
+	'bg-amber-100 dark:bg-amber-700',
+	'bg-yellow-100 dark:bg-yellow-700',
+	'bg-lime-100 dark:bg-lime-700',
+	'bg-green-100 dark:bg-green-700',
+	'bg-emerald-100 dark:bg-emerald-700',
+	'bg-teal-100 dark:bg-teal-700',
+	'bg-cyan-100 dark:bg-cyan-700',
+	'bg-sky-100 dark:bg-sky-700',
+	'bg-blue-100 dark:bg-blue-700',
+	'bg-indigo-100 dark:bg-indigo-700',
+	'bg-violet-100 dark:bg-violet-700',
+	'bg-purple-100 dark:bg-purple-700',
+	'bg-fuchsia-100 dark:bg-fuchsia-700',
+	'bg-pink-100 dark:bg-pink-700',
+	'bg-rose-100 dark:bg-rose-700'
 ];
 
 export function getThumbnailColor(title: string): string {

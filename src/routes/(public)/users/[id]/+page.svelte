@@ -94,7 +94,7 @@
 
 						<!-- Right: thumbnail (hidden on mobile) -->
 						<div
-							class="hidden size-20 shrink-0 rounded-md font-ibm sm:flex
+							class="hidden size-20 shrink-0 rounded-md font-ibm text-foreground/80 sm:flex
 								{getThumbnailColor(post.title)} items-center justify-center text-2xl font-medium"
 							aria-hidden="true"
 						>
