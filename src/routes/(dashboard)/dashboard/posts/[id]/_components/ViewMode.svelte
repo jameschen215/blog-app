@@ -194,7 +194,7 @@
 												type="button"
 												title="Delete comment"
 												onclick={() => (confirmingDeleteId = comment.id)}
-												class="cursor-pointer rounded-sm p-1.5 text-muted-foreground opacity-0 transition-all duration-200 group-focus-within:opacity-100 group-hover:opacity-100 hover:bg-destructive/10 hover:text-destructive"
+												class="cursor-pointer rounded-sm p-1.5 text-muted-foreground opacity-100 transition-all duration-200 group-focus-within:opacity-100 group-hover:opacity-100 hover:bg-destructive/10 hover:text-destructive sm:opacity-0"
 											>
 												<Trash2 class="size-3.5" />
 											</button>
