@@ -11,7 +11,7 @@ export const actions = {
 	default: async ({ request, fetch }) => {
 		const formData = await request.formData();
 		const data = {
-			title: formData.get('title') as string,
+			title: formData.get('title') ?? '',
 			content: decodeFormContent(formData.get('contentEncoded'), formData.get('content')),
 			published: formData.get('published') === 'true'
 		};
