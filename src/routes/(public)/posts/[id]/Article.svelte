@@ -37,7 +37,7 @@
 	<div class="mb-8 flex items-center gap-2.5">
 		<a
 			href="/users/{post.author.id}"
-			class="flex size-7 shrink-0 items-center justify-center rounded-full border border-border bg-muted/50 text-[12px] font-medium text-foreground uppercase transition-colors hover:border-foreground/30"
+			class="flex size-6 shrink-0 items-center justify-center rounded-full border border-border bg-muted/50 text-[12px] font-medium text-foreground uppercase transition-colors hover:border-foreground/30"
 		>
 			{post.author.username[0]}
 		</a>
