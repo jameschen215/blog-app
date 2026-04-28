@@ -19,7 +19,15 @@ export function getReadingTime(content: string): string {
 }
 
 export function getExcerpt(content: string): string {
-	return content.replace(/<[^>]*>/g, '').trim();
+	return content.replace(/<[^>]*>/g, '\n').trim();
+}
+
+export function getExcerptOfTheFirstPara(content: string): string {
+	const match = content.match(/<p>(.*?)<\/p>/s);
+
+	if (!match) return getExcerpt(content).split('\n')[0].trim();
+
+	return getExcerpt(match[1]).trim();
 }
 
 const THUMBNAIL_COLORS = [
