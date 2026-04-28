@@ -31,6 +31,7 @@ export function sanitizeHtml(html: string): string {
 			'hr',
 			'img'
 		],
-		ALLOWED_ATTR: ['href', 'target', 'rel', 'class', 'src', 'alt']
+		ALLOWED_ATTR: ['href', 'target', 'rel', 'class', 'src', 'alt'],
+		ALLOWED_URI_REGEXP: /^(?:(?:https?|mailto):|[^a-z]|[a-z+.\-]*(?:[^a-z+.\-:]|$))/i
 	});
 }
