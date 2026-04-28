@@ -5,6 +5,7 @@
 	import {
 		formatCompactNum,
 		getExcerpt,
+		getExcerptOfTheFirstPara,
 		getReadingTime,
 		getThumbnailColor
 	} from '$lib/utils/formatters';
@@ -73,7 +74,7 @@
 
 							<!-- Excerpt -->
 							<p class="mb-3.5 line-clamp-2 text-sm leading-relaxed text-muted-foreground">
-								{getExcerpt(post.content)}
+								{getExcerptOfTheFirstPara(post.content)}
 							</p>
 
 							<!-- Stats -->
