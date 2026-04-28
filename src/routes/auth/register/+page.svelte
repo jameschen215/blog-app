@@ -29,9 +29,9 @@
 		}
 	});
 
-	const clearError = (filedName: string) => {
-		if (localErrors[filedName] || localFormError) {
-			localErrors[filedName] = undefined;
+	const clearError = (fieldName: string) => {
+		if (localErrors[fieldName] || localFormError) {
+			localErrors[fieldName] = undefined;
 			localFormError = undefined;
 		}
 	};
