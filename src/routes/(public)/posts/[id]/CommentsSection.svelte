@@ -167,16 +167,16 @@
 								<div class="mb-3 flex items-center gap-2">
 									{#if comment.author}
 										<a
-											href="/users/{post.author.id}"
+											href="/users/{comment.author.id}"
 											class="flex size-6 shrink-0 items-center justify-center rounded-full border border-border bg-muted/50 text-[12px] font-medium text-foreground uppercase transition-colors hover:border-foreground/30"
 										>
-											{post.author.username[0]}
+											{comment.author.username[0]}
 										</a>
 										<a
-											href="/users/{post.author.id}"
+											href="/users/{comment.author.id}"
 											class="text-sm font-medium text-foreground transition-colors hover:underline hover:underline-offset-2"
 										>
-											{post.author.username}
+											{comment.author.username}
 										</a>
 									{:else}
 										<div
