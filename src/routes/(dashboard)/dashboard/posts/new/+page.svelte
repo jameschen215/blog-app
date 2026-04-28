@@ -150,7 +150,9 @@
 	>
 		<!-- Title -->
 		<Field.Field class="shrink-0">
+			<label for="post-title" class="sr-only">Post title</label>
 			<input
+				id="post-title"
 				name="title"
 				placeholder="New post title"
 				bind:value={draft.title}
