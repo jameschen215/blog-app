@@ -2,7 +2,7 @@ import { fail } from '@sveltejs/kit';
 import type { Actions } from './$types';
 
 import { deletePostSchema, togglePublishSchema } from '$lib/schema/post';
-import { deletePost, getMyPosts, getPostsByAuthor, togglePostPublish } from '$lib/api/post';
+import { deletePost, getMyPosts, togglePostPublish } from '$lib/api/post';
 import { handleActionError, handleLoadError } from '$lib/utils/error-handlers';
 
 export async function load({ fetch }) {

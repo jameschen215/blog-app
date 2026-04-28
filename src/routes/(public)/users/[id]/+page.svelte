@@ -4,7 +4,6 @@
 	import type { PageProps } from './$types';
 	import {
 		formatCompactNum,
-		getExcerpt,
 		getExcerptOfTheFirstPara,
 		getReadingTime,
 		getThumbnailColor
