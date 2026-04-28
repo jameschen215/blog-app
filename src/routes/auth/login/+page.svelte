@@ -9,66 +9,29 @@
 	import Button from '$lib/components/ui/button/button.svelte';
 	import { goto } from '$app/navigation';
 	import AuthFormField from '../_components/AuthFormField.svelte';
+	import { createAuthForm } from '../_components/authForm.svelte';
 
 	let { form } = $props();
-	let submitting = $state(false);
 
 	let registerUrl = $derived.by(() => {
 		const redirect = page.url.searchParams.get('redirect');
 		return redirect ? `/auth/register?redirect=${encodeURIComponent(redirect)}` : '/auth/register';
 	});
 
-	// Local error state for real-time clearing
-	let localErrors = $state<Record<string, string[] | undefined>>({});
-	let localFormError = $state<string | undefined>();
-
-	// Sync form errors with local errors
-	$effect(() => {
-		if (form?.errors) {
-			localErrors = { ...form.errors };
-		}
-
-		if (form?.message) {
-			localFormError = form.message;
-		}
-	});
-
-	// Clear error for a specific field
-	function clearError(fieldName: string) {
-		if (localErrors[fieldName] || localFormError) {
-			localErrors[fieldName] = undefined;
-			localFormError = undefined;
-		}
-	}
+	const auth = createAuthForm(() => form);
 
 	const handleSubmit: SubmitFunction = () => {
-		submitting = true;
+		auth.submitting = true;
 
 		return async ({ result }) => {
-			submitting = false;
+			auth.submitting = false;
 
 			if (result.type === 'redirect') {
 				toast.message('You are logged in successfully!');
 				goto(result.location, { invalidateAll: true });
 			} else {
 				await applyAction(result);
-
-				// Focus first error field after submission
-				if (result.type === 'failure' && result.data) {
-					const data = result.data as {
-						[k: string]: FormDataEntryValue;
-					};
-
-					if (data.errors && typeof data.errors === 'object') {
-						setTimeout(() => {
-							const firstErrorField = Object.keys(data.errors)[0];
-							if (firstErrorField) {
-								const input = document.getElementById(firstErrorField) as HTMLInputElement;
-								input?.focus();
-							}
-						}, 0);
-					}
-				}
+				if (result.type === 'failure') auth.focusFirstError(result.data);
 			}
 		};
 	};
@@ -91,8 +54,8 @@
 					name="username"
 					label="username"
 					value={form?.data?.username ?? ''}
-					errors={localErrors?.username}
-					onClearError={() => clearError('username')}
+					errors={auth.localErrors?.username}
+					onClearError={() => auth.clearError('username')}
 					autofocus
 				/>
 
@@ -101,17 +64,17 @@
 					label="password"
 					type="password"
 					value={form?.data?.password ?? ''}
-					errors={localErrors?.password}
-					onClearError={() => clearError('password')}
+					errors={auth.localErrors?.password}
+					onClearError={() => auth.clearError('password')}
 				/>
 
 				<Field.Field class="gap-2">
-					<Button type="submit" class="cursor-pointer" disabled={submitting}>
-						{submitting ? 'Logging in...' : 'Login'}
+					<Button type="submit" class="cursor-pointer" disabled={auth.submitting}>
+						{auth.submitting ? 'Logging in...' : 'Login'}
 					</Button>
 
-					{#if localFormError}
-						<Field.FieldError id="form-message">{localFormError}</Field.FieldError>
+					{#if auth.localFormError}
+						<Field.FieldError id="form-message">{auth.localFormError}</Field.FieldError>
 					{/if}
 				</Field.Field>
 			</Field.Group>
@@ -123,9 +86,9 @@
 				href={registerUrl}
 				class={cn(
 					'font-medium italic underline transition-all hover:underline-offset-2',
-					submitting && 'pointer-events-none cursor-not-allowed opacity-50'
+					auth.submitting && 'pointer-events-none cursor-not-allowed opacity-50'
 				)}
-				aria-disabled={submitting}
+				aria-disabled={auth.submitting}
 			>
 				Register
 			</a>

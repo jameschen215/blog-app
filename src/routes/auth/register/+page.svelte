@@ -8,55 +8,24 @@
 	import * as Field from '$lib/components/ui/field/index.js';
 	import Button from '$lib/components/ui/button/button.svelte';
 	import AuthFormField from '../_components/AuthFormField.svelte';
+	import { createAuthForm } from '../_components/authForm.svelte';
 
 	let { form }: PageProps = $props();
 
-	let submitting = $state(false);
-	let localErrors = $state<Record<string, string[] | undefined>>({});
-	let localFormError = $state<string | undefined>();
 	let loginUrl = $derived.by(() => {
 		const redirect = page.url.searchParams.get('redirect');
 		return redirect ? `/auth/login?redirect=${encodeURIComponent(redirect)}` : '/auth/login';
 	});
 
-	$effect(() => {
-		if (form?.errors) {
-			localErrors = { ...form.errors };
-		}
-
-		if (form?.message) {
-			localFormError = form.message;
-		}
-	});
-
-	const clearError = (fieldName: string) => {
-		if (localErrors[fieldName] || localFormError) {
-			localErrors[fieldName] = undefined;
-			localFormError = undefined;
-		}
-	};
+	const auth = createAuthForm(() => form);
 
 	const handleSubmit: SubmitFunction = () => {
-		submitting = true;
+		auth.submitting = true;
 
 		return async ({ result }) => {
-			submitting = false;
-
+			auth.submitting = false;
 			await applyAction(result);
-
-			// focus on first error field after submission
-			if (result.type === 'failure' && result.data) {
-				const data = result.data as { [k: string]: FormDataEntryValue };
-
-				if (data.errors && typeof data.errors === 'object') {
-					setTimeout(() => {
-						const firstErrorField = Object.keys(data.errors)[0];
-						if (firstErrorField) {
-							document.getElementById(firstErrorField)?.focus();
-						}
-					}, 0);
-				}
-			}
+			if (result.type === 'failure') auth.focusFirstError(result.data);
 		};
 	};
 </script>
@@ -78,8 +47,8 @@
 					name="username"
 					label="username"
 					value={form?.data?.username ?? ''}
-					errors={localErrors?.username}
-					onClearError={() => clearError('username')}
+					errors={auth.localErrors?.username}
+					onClearError={() => auth.clearError('username')}
 					autofocus
 				/>
 
@@ -88,8 +57,8 @@
 					label="email"
 					type="email"
 					value={form?.data?.email ?? ''}
-					errors={localErrors?.email}
-					onClearError={() => clearError('email')}
+					errors={auth.localErrors?.email}
+					onClearError={() => auth.clearError('email')}
 				/>
 
 				<AuthFormField
@@ -97,8 +66,8 @@
 					label="password"
 					type="password"
 					value={form?.data?.password ?? ''}
-					errors={localErrors?.password}
-					onClearError={() => clearError('password')}
+					errors={auth.localErrors?.password}
+					onClearError={() => auth.clearError('password')}
 				/>
 
 				<AuthFormField
@@ -106,17 +75,17 @@
 					label="confirmPassword"
 					type="password"
 					value={form?.data?.confirmPassword ?? ''}
-					errors={localErrors?.confirmPassword}
-					onClearError={() => clearError('confirmPassword')}
+					errors={auth.localErrors?.confirmPassword}
+					onClearError={() => auth.clearError('confirmPassword')}
 				/>
 
 				<Field.Field class="gap-2">
-					<Button type="submit" class="cursor-pointer" disabled={submitting}>
-						{submitting ? 'Registering...' : 'Register'}
+					<Button type="submit" class="cursor-pointer" disabled={auth.submitting}>
+						{auth.submitting ? 'Registering...' : 'Register'}
 					</Button>
 
-					{#if localFormError}
-						<Field.FieldError id="form-message">{localFormError}</Field.FieldError>
+					{#if auth.localFormError}
+						<Field.FieldError id="form-message">{auth.localFormError}</Field.FieldError>
 					{/if}
 				</Field.Field>
 			</Field.Group>
@@ -128,9 +97,9 @@
 				href={loginUrl}
 				class={cn(
 					'font-medium italic underline transition-all hover:underline-offset-2',
-					submitting && 'pointer-events-none cursor-not-allowed opacity-50'
+					auth.submitting && 'pointer-events-none cursor-not-allowed opacity-50'
 				)}
-				aria-disabled={submitting}
+				aria-disabled={auth.submitting}
 			>
 				Login
 			</a>
