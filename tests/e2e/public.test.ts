@@ -22,6 +22,7 @@ test.describe('home page', () => {
 test.describe('navigation', () => {
 	test('login page is reachable from the header menu', async ({ page }) => {
 		await page.goto('/');
+		await page.waitForLoadState('networkidle');
 		await page.getByRole('button', { name: 'Menu' }).click();
 		await page.getByRole('menuitem', { name: 'Login' }).click();
 		await expect(page).toHaveURL(/\/auth\/login/);
@@ -29,6 +30,7 @@ test.describe('navigation', () => {
 
 	test('register page is reachable from the header menu', async ({ page }) => {
 		await page.goto('/');
+		await page.waitForLoadState('networkidle');
 		await page.getByRole('button', { name: 'Menu' }).click();
 		await page.getByRole('menuitem', { name: 'Register' }).click();
 		await expect(page).toHaveURL(/\/auth\/register/);

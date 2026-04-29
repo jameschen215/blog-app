@@ -58,6 +58,7 @@ test.describe('sort filters', () => {
 
 	test('switching back to Latest removes the sort param', async ({ page }) => {
 		await page.goto('/?sort=likes');
+		await page.waitForLoadState('networkidle');
 		await page.getByRole('button', { name: 'Latest' }).click();
 		await expect(page).toHaveURL(/sort=latest/);
 	});

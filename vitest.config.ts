@@ -4,7 +4,9 @@ import { resolve } from 'path';
 export default defineConfig({
 	resolve: {
 		alias: {
-			$lib: resolve('./src/lib')
+			$lib: resolve('./src/lib'),
+			'$app/environment': resolve('./tests/mocks/app-environment.ts'),
+			'$env/dynamic/public': resolve('./tests/mocks/env-dynamic-public.ts')
 		}
 	},
 	test: {

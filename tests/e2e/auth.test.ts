@@ -10,6 +10,7 @@ test.describe('login page', () => {
 
 	test('shows an error on invalid credentials', async ({ page }) => {
 		await page.goto('/auth/login');
+		await page.waitForLoadState('networkidle');
 		await page.getByLabel('username').fill('wronguser');
 		await page.getByLabel('password').fill('wrongpass');
 		await page.getByRole('button', { name: 'Login' }).click();
@@ -48,10 +49,12 @@ test.describe('authenticated flow', () => {
 	test('logout clears session and redirects to home', async ({ page }) => {
 		// Log in first
 		await page.goto('/auth/login');
+		await page.waitForLoadState('networkidle');
 		await page.getByLabel('username').fill(username!);
 		await page.getByLabel('password').fill(password!);
 		await page.getByRole('button', { name: 'Login' }).click();
 		await expect(page).toHaveURL('/');
+		await page.waitForLoadState('networkidle');
 
 		// Then log out via the header menu
 		await page.getByRole('button', { name: 'Menu' }).click();
